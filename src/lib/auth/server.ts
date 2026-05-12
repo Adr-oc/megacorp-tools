@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { organization } from 'better-auth/plugins'
+import { magicLink, organization } from 'better-auth/plugins'
 import { db } from '@/lib/db'
 import { env } from '@/lib/env'
 
@@ -31,6 +31,12 @@ export const auth = betterAuth({
       sendInvitationEmail: async ({ email, invitation, organization }) => {
         const url = `${env.BETTER_AUTH_URL}/accept-invitation?token=${invitation.id}`
         console.log(`[invitation] to=${email} org=${organization.name} url=${url}`)
+      },
+    }),
+    magicLink({
+      sendMagicLink: async ({ email, url }) => {
+        // En Fase 2 solo loggeamos. Resend se integra en F2-11.
+        console.log(`[magic-link] to=${email} url=${url}`)
       },
     }),
   ],
