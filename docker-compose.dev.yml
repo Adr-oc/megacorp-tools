@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: megatools-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: megatools
+      POSTGRES_PASSWORD: megatools_dev
+      POSTGRES_DB: megatools_dev
+    ports:
+      - "5435:5432"
+    volumes:
+      - megatools_pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U megatools -d megatools_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  megatools_pgdata_dev:
