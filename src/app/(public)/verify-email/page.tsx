@@ -17,8 +17,24 @@ export default function VerifyEmailPage() {
       return
     }
     fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`)
-      .then((res) => {
-        setStatus(res.ok ? 'success' : 'error')
+      .then(async (res) => {
+        if (!res.ok) {
+          setStatus('error')
+          return
+        }
+        const pendingInvitation =
+          typeof window !== 'undefined'
+            ? sessionStorage.getItem('pendingInvitationToken')
+            : null
+        if (pendingInvitation) {
+          await fetch('/api/auth/organization/accept-invitation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ invitationId: pendingInvitation }),
+          }).catch(() => {})
+          sessionStorage.removeItem('pendingInvitationToken')
+        }
+        setStatus('success')
       })
       .catch(() => setStatus('error'))
   }, [token])
