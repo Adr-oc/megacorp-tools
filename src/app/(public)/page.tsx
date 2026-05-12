@@ -8,9 +8,9 @@ export default function LandingPage() {
       <p className="text-xl text-muted-foreground mb-8">
         Portal de herramientas internas del grupo MEGACORP.
       </p>
-      <Button asChild size="lg">
-        <Link href="/login">Iniciar sesión</Link>
-      </Button>
+      <Link href="/login">
+        <Button size="lg">Iniciar sesión</Button>
+      </Link>
     </section>
   )
 }
