@@ -1,8 +1,10 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { createAuthMiddleware } from 'better-auth/api'
 import { magicLink, organization } from 'better-auth/plugins'
 import { db } from '@/lib/db'
 import { env } from '@/lib/env'
+import { logAudit } from '@/lib/audit/log'
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -41,6 +43,16 @@ export const auth = betterAuth({
     }),
   ],
   trustedOrigins: [env.BETTER_AUTH_URL],
+  hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      const userId = ctx.context.newSession?.user?.id
+      if (!userId) return
+      const path = ctx.path ?? ''
+      if (path.startsWith('/sign-in') || path.startsWith('/magic-link')) {
+        await logAudit({ action: 'user.login', userId })
+      }
+    }),
+  },
 })
 
 export type Auth = typeof auth
