@@ -77,8 +77,6 @@ Visitar http://localhost:3000.
 
 ## Deploy en producción
 
-> Los archivos de Docker y compose para producción se agregan en una etapa posterior de Fase 3 (Task 12). Esta sección documenta el flujo previsto.
-
 1. Crear `.env.production` basado en `.env.production.example`:
    ```bash
    cp .env.production.example .env.production
