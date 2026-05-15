@@ -20,7 +20,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen flex flex-col">
       <header className="border-b">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/app" className="font-semibold text-lg">
+          <Link href="/app" className="flex items-center gap-2 font-semibold text-lg">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mega_logo.svg" alt="MEGACORP" width={28} height={28} />
             MegaTools
           </Link>
           <div className="flex items-center gap-2">
