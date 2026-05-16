@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import { WorkspaceProvider, useLoadPdf, useStateBridge, useWorkspace } from '@/lib/pdf/document-store'
 import { EmptyState } from '@/components/pdf-workbench/empty-state'
 import { PageGrid } from '@/components/pdf-workbench/page-grid'
+import { Toolbar } from '@/components/pdf-workbench/toolbar'
 import { UploadZone } from '@/components/pdf-workbench/upload-zone'
 
 function WorkbenchInner() {
@@ -35,6 +36,7 @@ function WorkbenchInner() {
             {Object.keys(pdfs).length} PDF{Object.keys(pdfs).length === 1 ? '' : 's'} · {pages.length} página{pages.length === 1 ? '' : 's'}
             {selection.size > 0 && ` · ${selection.size} seleccionada${selection.size === 1 ? '' : 's'}`}
           </div>
+          <Toolbar />
           <PageGrid />
         </>
       )}
