@@ -20,6 +20,6 @@ test('home muestra grid de apps con Settings disponible y placeholders', async (
   await loginAsAdmin(page)
   await page.goto('/app')
   await expect(page.getByText(/configuraci/i).first()).toBeVisible()
-  await expect(page.getByText(/separador de pdf/i).first()).toBeVisible()
+  await expect(page.getByText(/pdf workbench/i).first()).toBeVisible()
   await expect(page.getByText(/próximamente/i).first()).toBeVisible()
 })
