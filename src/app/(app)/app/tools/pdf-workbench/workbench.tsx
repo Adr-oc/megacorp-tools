@@ -3,11 +3,12 @@
 import { useRef } from 'react'
 import { WorkspaceProvider, useLoadPdf, useStateBridge, useWorkspace } from '@/lib/pdf/document-store'
 import { EmptyState } from '@/components/pdf-workbench/empty-state'
+import { PageGrid } from '@/components/pdf-workbench/page-grid'
 import { UploadZone } from '@/components/pdf-workbench/upload-zone'
 
 function WorkbenchInner() {
   useStateBridge()
-  const { pages } = useWorkspace()
+  const { pages, pdfs, selection } = useWorkspace()
   const loadPdf = useLoadPdf()
   const triggerPickerRef = useRef<() => void>(() => {})
 
@@ -29,9 +30,13 @@ function WorkbenchInner() {
           <EmptyState onChoose={() => triggerPickerRef.current()} />
         </>
       ) : (
-        <div className="text-sm text-muted-foreground">
-          {pages.length} página{pages.length === 1 ? '' : 's'} cargada{pages.length === 1 ? '' : 's'}
-        </div>
+        <>
+          <div className="text-sm text-muted-foreground">
+            {Object.keys(pdfs).length} PDF{Object.keys(pdfs).length === 1 ? '' : 's'} · {pages.length} página{pages.length === 1 ? '' : 's'}
+            {selection.size > 0 && ` · ${selection.size} seleccionada${selection.size === 1 ? '' : 's'}`}
+          </div>
+          <PageGrid />
+        </>
       )}
     </div>
   )
