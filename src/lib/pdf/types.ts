@@ -39,11 +39,13 @@ export type WorkspaceState = {
   exporting: boolean                  // spinner de export
 }
 
-export const initialState: WorkspaceState = {
-  pdfs: {},
-  pages: [],
-  selection: new Set(),
-  thumbnails: {},
-  lastSelectedId: null,
-  exporting: false,
+export function createInitialState(): WorkspaceState {
+  return {
+    pdfs: {},
+    pages: [],
+    selection: new Set(),
+    thumbnails: {},
+    lastSelectedId: null,
+    exporting: false,
+  }
 }

@@ -1,4 +1,4 @@
-import type { Badge, PdfId } from './types'
+import type { Badge } from './types'
 
 // Paleta de 8 colores accesibles (contraste >4.5 sobre fondo blanco)
 const PALETTE = [
@@ -19,8 +19,8 @@ function labelFromName(name: string): string {
   return letters.slice(0, 3) || 'PDF'
 }
 
-export function buildBadge(name: string, existingPdfIds: PdfId[]): Badge {
+export function buildBadge(name: string, loadedCount: number): Badge {
   // Rota la paleta según cuántos PDFs ya hay cargados
-  const color = PALETTE[existingPdfIds.length % PALETTE.length]!
+  const color = PALETTE[loadedCount % PALETTE.length]!
   return { label: labelFromName(name), color }
 }
