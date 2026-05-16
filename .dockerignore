@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.env
+.env.local
+.env.development
+.env.test
+test-results
+playwright-report
+playwright/.cache
+docs
+*.md
+!README.md
+Dockerfile
+.dockerignore
+docker-compose*.yml

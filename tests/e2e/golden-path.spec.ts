@@ -13,7 +13,7 @@ test('superadmin puede iniciar sesión y ver el shell autenticado', async ({ pag
   await page.getByRole('button', { name: /iniciar sesi/i }).click()
 
   await expect(page).toHaveURL(/\/app/, { timeout: 10_000 })
-  await expect(page.getByRole('heading', { name: /bienvenido/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /aplicaciones/i })).toBeVisible()
 })
 
 test('rutas autenticadas redirigen a /login sin sesión', async ({ page }) => {
