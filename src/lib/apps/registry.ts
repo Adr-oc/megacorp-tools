@@ -12,13 +12,13 @@ export const apps: AppDefinition[] = [
     status: 'available',
   },
   {
-    id: 'pdf-splitter',
-    name: 'Separador de PDFs',
-    description: 'Dividir y reordenar páginas de PDF.',
+    id: 'pdf-workbench',
+    name: 'PDF Workbench',
+    description: 'Combinar, separar, reordenar y editar páginas de PDFs. Todo en tu navegador, nada se sube.',
     icon: FileText,
-    href: '/app/tools/pdf-splitter',
+    href: '/app/tools/pdf-workbench',
     requiredRoles: ['member', 'admin', 'owner'],
-    status: 'coming-soon',
+    status: 'available',
   },
   {
     id: 'image-ai',
