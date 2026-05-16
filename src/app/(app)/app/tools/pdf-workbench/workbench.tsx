@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { WorkspaceProvider, useLoadPdf, useStateBridge, useWorkspace } from '@/lib/pdf/document-store'
 import { EmptyState } from '@/components/pdf-workbench/empty-state'
+import { ExportMenu } from '@/components/pdf-workbench/export-menu'
 import { PageGrid } from '@/components/pdf-workbench/page-grid'
 import { Toolbar } from '@/components/pdf-workbench/toolbar'
 import { UploadZone } from '@/components/pdf-workbench/upload-zone'
@@ -19,11 +20,12 @@ function WorkbenchInner() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold">PDF Workbench</h1>
-        {pages.length > 0 && (
-          <UploadZone onFiles={onFiles} registerTrigger={(fn) => { triggerPickerRef.current = fn }} />
-        )}
+        <div className="flex items-center gap-2">
+          {pages.length > 0 && <UploadZone onFiles={onFiles} registerTrigger={(fn) => { triggerPickerRef.current = fn }} />}
+          {pages.length > 0 && <ExportMenu />}
+        </div>
       </div>
       {pages.length === 0 ? (
         <>
