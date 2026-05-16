@@ -109,7 +109,10 @@ Resumen:
 - Registry de apps en `src/lib/apps/registry.ts` (single source of truth)
 - Cada herramienta = una entrada en el registry + una carpeta en `src/app/(app)/tools/`
 
+## Herramientas disponibles
+
+- **PDF Workbench** (`/app/tools/pdf-workbench`) — Combiná, separá, reordená y editá páginas de uno o varios PDFs. Procesamiento 100% en el navegador, los archivos nunca tocan el servidor.
+
 ## Próximas herramientas
 
-- Separador de PDFs (Sprint 1)
 - Procesador de imágenes con IA (Sprint 2)
