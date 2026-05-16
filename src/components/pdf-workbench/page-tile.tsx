@@ -13,7 +13,8 @@ type Props = {
 }
 
 export function PageTile({ page }: Props) {
-  const { pdfs, thumbnails, selection } = useWorkspace()
+  const workspace = useWorkspace()
+  const { pdfs, thumbnails, selection } = workspace
   const dispatch = useDispatch()
   const selected = selection.has(page.id)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: page.id })
@@ -39,10 +40,8 @@ export function PageTile({ page }: Props) {
   async function onDownloadOne() {
     dispatch({ type: 'export/start' })
     try {
-      const state = (window as unknown as { __mtState?: () => import('@/lib/pdf/types').WorkspaceState }).__mtState?.()
-      if (!state) return
-      const bytes = await exportPages(state, [page.id])
-      downloadBytes(bytes, buildFilename(state, [page.id], 'single'))
+      const bytes = await exportPages(workspace, [page.id])
+      downloadBytes(bytes, buildFilename(workspace, [page.id], 'single'))
     } finally {
       dispatch({ type: 'export/end' })
     }

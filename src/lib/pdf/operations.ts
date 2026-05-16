@@ -9,6 +9,7 @@ export type Action =
       bytes: Uint8Array
       pageCount: number
       badge: { label: string; color: string }
+      pageIds: string[]
     }
   | { type: 'pdf/remove'; pdfId: string }
   | { type: 'pages/delete'; ids: PageId[] }
@@ -48,7 +49,7 @@ export function reducer(state: WorkspaceState, action: Action): WorkspaceState {
       const newPages: WorkspacePage[] = []
       for (let i = 0; i < action.pageCount; i++) {
         newPages.push({
-          id: ulid(),
+          id: action.pageIds[i] ?? ulid(),
           kind: 'source',
           sourceId: action.pdfId,
           sourceIndex: i,

@@ -85,28 +85,19 @@ export function useLoadPdf() {
       if (futureTotal > 500 * 1024 * 1024) {
         toast.warning('Estás cerca del límite del navegador; podría volverse lento')
       }
-      dispatch({ type: 'pdf/load', pdfId, name: file.name, bytes, pageCount, badge })
+      const pageIds = Array.from({ length: pageCount }, () => ulid())
+      dispatch({ type: 'pdf/load', pdfId, name: file.name, bytes, pageCount, badge, pageIds })
 
-      // Render thumbnails en background (no esperamos)
-      ;(async () => {
-        // Las pages recién agregadas son las últimas `pageCount` del state futuro;
-        // como dispatch ya corrió, leemos del próximo render via callback ref.
-        // Para evitar carrera, lanzamos render por cada (pdfId, sourceIndex) y dispatchamos thumbnail/set
-        // usando el pageId que ya conocemos del state actualizado en el siguiente tick.
-        await new Promise((r) => setTimeout(r, 0))
-        // Lectura via state cerrado: tomamos las pages del pdfId
-        // TODO(sprint 1.5): reemplazar bridge global con cierre adecuado
-        const pagesOfThisPdf = (window as unknown as { __mtState?: () => WorkspaceState }).__mtState?.()
-          ?.pages.filter((p) => p.kind === 'source' && p.sourceId === pdfId) ?? []
-        for (const p of pagesOfThisPdf) {
-          if (p.kind !== 'source') continue
-          renderThumbnail({ pageId: p.id, bytes, sourceIndex: p.sourceIndex, rotation: p.rotation })
-            .then((r) => dispatch({ type: 'thumbnail/set', id: r.pageId, dataUrl: r.dataUrl }))
-            .catch(() => {
-              // tile mostrará placeholder; no rompe el flow
-            })
-        }
-      })()
+      // Lanzamos render de thumbnails con los pageIds ya conocidos (sin depender de window bridge)
+      for (let i = 0; i < pageCount; i++) {
+        const pageId = pageIds[i]
+        if (!pageId) continue
+        renderThumbnail({ pageId, bytes, sourceIndex: i, rotation: 0 })
+          .then((r) => dispatch({ type: 'thumbnail/set', id: r.pageId, dataUrl: r.dataUrl }))
+          .catch(() => {
+            // tile mostrará placeholder; no rompe el flow
+          })
+      }
     },
     [state.pdfs, dispatch],
   )
