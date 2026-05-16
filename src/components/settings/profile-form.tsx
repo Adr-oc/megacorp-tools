@@ -69,8 +69,8 @@ export function ProfileForm({ user }: Props) {
           )}
         />
         <div>
-          <FormLabel>Email</FormLabel>
-          <Input value={user.email} disabled className="mt-2" />
+          <FormLabel htmlFor="profile-email">Email</FormLabel>
+          <Input id="profile-email" value={user.email} disabled className="mt-2" />
           <FormDescription className="mt-1">
             El email no se puede cambiar desde acá.
           </FormDescription>
