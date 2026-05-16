@@ -12,6 +12,7 @@
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
     "bootstrap": "tsx --env-file=.env scripts/bootstrap.ts",
+    "pdf:fixtures": "tsx scripts/build-pdf-fixtures.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
