@@ -83,3 +83,11 @@ export function downloadBytes(bytes: Uint8Array, filename: string): void {
   document.body.removeChild(a)
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+
+export function findOrphanPdfIds(state: WorkspaceState): string[] {
+  const referenced = new Set<string>()
+  for (const p of state.pages) {
+    if (p.kind === 'source') referenced.add(p.sourceId)
+  }
+  return Object.keys(state.pdfs).filter((id) => !referenced.has(id))
+}

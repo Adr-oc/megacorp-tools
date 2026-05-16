@@ -80,6 +80,11 @@ export function useLoadPdf() {
       }
       const pdfId = ulid()
       const badge = buildBadge(file.name, Object.keys(state.pdfs).length)
+      const currentTotal = Object.values(state.pdfs).reduce((acc, p) => acc + p.bytes.length, 0)
+      const futureTotal = currentTotal + bytes.length
+      if (futureTotal > 500 * 1024 * 1024) {
+        toast.warning('Estás cerca del límite del navegador; podría volverse lento')
+      }
       dispatch({ type: 'pdf/load', pdfId, name: file.name, bytes, pageCount, badge })
 
       // Render thumbnails en background (no esperamos)

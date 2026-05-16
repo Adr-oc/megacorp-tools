@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useDispatch, useWorkspace } from '@/lib/pdf/document-store'
-import { buildFilename, downloadBytes, exportPages } from '@/lib/pdf/exporter'
+import { buildFilename, downloadBytes, exportPages, findOrphanPdfIds } from '@/lib/pdf/exporter'
 import { toast } from 'sonner'
 
 export function ExportMenu() {
@@ -29,6 +29,8 @@ export function ExportMenu() {
       const bytes = await exportPages(state, ids)
       downloadBytes(bytes, buildFilename(state, ids, mode))
       toast.success('Descarga iniciada')
+      const orphans = findOrphanPdfIds(state)
+      for (const id of orphans) dispatch({ type: 'pdf/remove', pdfId: id })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al exportar')
     } finally {
