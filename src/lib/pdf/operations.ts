@@ -95,18 +95,28 @@ export function reducer(state: WorkspaceState, action: Action): WorkspaceState {
     }
 
     case 'pages/move': {
+      if (action.ids.length === 0) return state
       const idsSet = new Set(action.ids)
-      const moving = state.pages.filter((p) => idsSet.has(p.id))
+      // El "anchor" es la página sobre la que se soltó (toIndex en el array original).
+      const clampedTarget = Math.max(0, Math.min(action.toIndex, state.pages.length - 1))
+      const anchorId = state.pages[clampedTarget]?.id
+      if (!anchorId || idsSet.has(anchorId)) return state
+
       const remaining = state.pages.filter((p) => !idsSet.has(p.id))
-      // toIndex es relativo al array original — ajustamos contando cuántos seleccionados quedan antes
-      const targetBeforeRemoval = action.toIndex
-      let adjustedIndex = targetBeforeRemoval
-      for (const p of state.pages.slice(0, targetBeforeRemoval)) {
-        if (idsSet.has(p.id)) adjustedIndex--
+      const moving = state.pages.filter((p) => idsSet.has(p.id))
+      const newAnchorIndex = remaining.findIndex((p) => p.id === anchorId)
+      if (newAnchorIndex < 0) return state
+
+      // Dirección del drag: si la selección venía desde antes del anchor → insertar
+      // DESPUÉS del anchor (semántica "el item arrastrado toma el lugar y empuja
+      // al anchor hacia atrás"). Si venía desde después → insertar antes.
+      const firstMovingIndex = state.pages.findIndex((p) => idsSet.has(p.id))
+      const insertAt = firstMovingIndex < clampedTarget ? newAnchorIndex + 1 : newAnchorIndex
+
+      return {
+        ...state,
+        pages: [...remaining.slice(0, insertAt), ...moving, ...remaining.slice(insertAt)],
       }
-      const next = [...remaining]
-      next.splice(adjustedIndex, 0, ...moving)
-      return { ...state, pages: next }
     }
 
     case 'pages/rotate': {
