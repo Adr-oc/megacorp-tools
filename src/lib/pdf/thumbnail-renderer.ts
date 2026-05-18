@@ -11,12 +11,10 @@ if (typeof window !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerPort) {
   )
 }
 
-export type ThumbnailRequest = {
+export type PageRenderInfo = {
   pageId: string
-  bytes: Uint8Array
   sourceIndex: number // 0-based en el PDF original
   rotation: 0 | 90 | 180 | 270
-  maxWidth?: number // default 280px
 }
 
 export type ThumbnailResult = {
@@ -24,12 +22,17 @@ export type ThumbnailResult = {
   dataUrl: string
 }
 
-const MAX_CONCURRENT = 4
+const MAX_WIDTH = 280
+
+// Cola de jobs por PDF (no por página) — saturar el worker con N getDocument()
+// paralelos lo deja colgado a partir de ~4. Cargamos el doc UNA vez por PDF
+// y serializamos sus páginas internamente.
+const MAX_PDFS_IN_FLIGHT = 2
 const queue: Array<() => Promise<void>> = []
 let running = 0
 
 function drain() {
-  while (running < MAX_CONCURRENT && queue.length > 0) {
+  while (running < MAX_PDFS_IN_FLIGHT && queue.length > 0) {
     const job = queue.shift()!
     running++
     job().finally(() => {
@@ -39,44 +42,49 @@ function drain() {
   }
 }
 
-function enqueue<T>(fn: () => Promise<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    queue.push(async () => {
-      try {
-        resolve(await fn())
-      } catch (e) {
-        reject(e)
-      }
-    })
-    drain()
-  })
+function enqueue(fn: () => Promise<void>): void {
+  queue.push(fn)
+  drain()
 }
 
-export async function renderThumbnail(req: ThumbnailRequest): Promise<ThumbnailResult> {
-  return enqueue(async () => {
-    // Clonamos los bytes: pdfjs.getDocument transfiere el ArrayBuffer al worker,
-    // lo cual deja el Uint8Array original vacío y rompe usos posteriores
-    // (ej. pdf-lib en exportPages tomando state.pdfs[id].bytes).
-    const loadingTask = pdfjs.getDocument({ data: req.bytes.slice() })
-    const doc = await loadingTask.promise
+/**
+ * Renderiza thumbnails de todas las páginas de un PDF y emite cada resultado
+ * vía `onResult` apenas está listo. Carga el PDFDocument UNA vez por PDF.
+ *
+ * `bytes` se clona internamente porque pdfjs transfiere el ArrayBuffer al worker.
+ */
+export function renderPdfThumbnails(
+  bytes: Uint8Array,
+  pages: PageRenderInfo[],
+  onResult: (r: ThumbnailResult) => void,
+): void {
+  if (pages.length === 0) return
+  enqueue(async () => {
+    let doc: Awaited<ReturnType<typeof pdfjs.getDocument>['promise']> | null = null
     try {
-      const page = await doc.getPage(req.sourceIndex + 1)
-      const baseViewport = page.getViewport({ scale: 1 })
-      const maxWidth = req.maxWidth ?? 280
-      const scale = maxWidth / baseViewport.width
-      const viewport = page.getViewport({ scale, rotation: req.rotation })
-
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.ceil(viewport.width)
-      canvas.height = Math.ceil(viewport.height)
-      const ctx = canvas.getContext('2d')
-      if (!ctx) throw new Error('No se pudo crear contexto 2D')
-
-      await page.render({ canvasContext: ctx, viewport, canvas }).promise
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
-      return { pageId: req.pageId, dataUrl }
+      const loadingTask = pdfjs.getDocument({ data: bytes.slice() })
+      doc = await loadingTask.promise
+      for (const p of pages) {
+        try {
+          const page = await doc.getPage(p.sourceIndex + 1)
+          const baseViewport = page.getViewport({ scale: 1 })
+          const scale = MAX_WIDTH / baseViewport.width
+          const viewport = page.getViewport({ scale, rotation: p.rotation })
+          const canvas = document.createElement('canvas')
+          canvas.width = Math.ceil(viewport.width)
+          canvas.height = Math.ceil(viewport.height)
+          const ctx = canvas.getContext('2d')
+          if (!ctx) continue
+          await page.render({ canvasContext: ctx, viewport, canvas }).promise
+          onResult({ pageId: p.pageId, dataUrl: canvas.toDataURL('image/jpeg', 0.7) })
+        } catch {
+          // tile mostrará placeholder; seguimos con la siguiente página
+        }
+      }
+    } catch {
+      // PDF no se pudo abrir en pdfjs (encriptado, corrupto, etc.) — placeholders
     } finally {
-      doc.destroy()
+      if (doc) await doc.destroy()
     }
   })
 }

@@ -8,7 +8,7 @@ import type { Action } from './operations'
 import { reducer } from './operations'
 import { createInitialState, type WorkspaceState } from './types'
 import { buildBadge } from './badges'
-import { renderThumbnail } from './thumbnail-renderer'
+import { renderPdfThumbnails } from './thumbnail-renderer'
 
 type Dispatch = (a: Action) => void
 
@@ -88,16 +88,14 @@ export function useLoadPdf() {
       const pageIds = Array.from({ length: pageCount }, () => ulid())
       dispatch({ type: 'pdf/load', pdfId, name: file.name, bytes, pageCount, badge, pageIds })
 
-      // Lanzamos render de thumbnails con los pageIds ya conocidos (sin depender de window bridge)
-      for (let i = 0; i < pageCount; i++) {
-        const pageId = pageIds[i]
-        if (!pageId) continue
-        renderThumbnail({ pageId, bytes, sourceIndex: i, rotation: 0 })
-          .then((r) => dispatch({ type: 'thumbnail/set', id: r.pageId, dataUrl: r.dataUrl }))
-          .catch(() => {
-            // tile mostrará placeholder; no rompe el flow
-          })
-      }
+      // Un solo getDocument por PDF: el worker procesa todas sus páginas en serie
+      // y dispatcha thumbnail/set apenas cada una está lista.
+      const pageInfo = pageIds
+        .map((pageId, i) => (pageId ? { pageId, sourceIndex: i, rotation: 0 as const } : null))
+        .filter((x): x is { pageId: string; sourceIndex: number; rotation: 0 } => x !== null)
+      renderPdfThumbnails(bytes, pageInfo, (r) =>
+        dispatch({ type: 'thumbnail/set', id: r.pageId, dataUrl: r.dataUrl }),
+      )
     },
     [state.pdfs, dispatch],
   )
