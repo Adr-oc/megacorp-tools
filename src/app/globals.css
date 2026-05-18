@@ -7,8 +7,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-jetbrains-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -39,6 +39,9 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
+  --font-serif: var(--font-instrument-serif);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,73 +52,134 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* Backgrounds — cream paper en light */
+  --background: oklch(0.96 0.012 80);     /* #F5F1EA */
+  --foreground: oklch(0.155 0.012 270);   /* #15171C */
+
+  /* Surfaces internas — white para contrastar con cream */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: var(--foreground);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --popover-foreground: var(--foreground);
+
+  /* Primary = casi-negro (botones secundarios / texto destacado, NO el accent) */
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+
+  --secondary: oklch(0.95 0.008 80);
+  --secondary-foreground: var(--foreground);
+
+  /* Muted — gris cálido sobre cream */
+  --muted: oklch(0.92 0.012 80);
+  --muted-foreground: oklch(0.5 0.012 80);   /* #8A857B */
+
+  /* shadcn accent (hover states) — gris cálido, NO el brand-accent */
+  --accent: oklch(0.92 0.012 80);
+  --accent-foreground: var(--foreground);
+
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+
+  /* Bordes hairline cream */
+  --border: oklch(0.86 0.018 80);            /* #D8D1C2 */
+  --input: oklch(0.86 0.018 80);
+  --ring: oklch(0.65 0.012 80);
+
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
+
+  --sidebar: oklch(0.985 0.008 80);
+  --sidebar-foreground: var(--foreground);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.92 0.012 80);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: oklch(0.86 0.018 80);
+  --sidebar-ring: oklch(0.65 0.012 80);
+
+  /* Brand-accent — separado de shadcn --accent. Default Mustard. Sobrescrito por [data-accent="..."] */
+  --brand-accent: oklch(0.7 0.13 75);
+  --brand-accent-foreground: oklch(0.15 0 0);
+
+  /* Logo mono — 4 cuadrantes + meridianos. Cambia con el tema. */
+  --logo-q1: #15171C;
+  --logo-q2: #2D3138;
+  --logo-q3: #7E7B73;
+  --logo-q4: #C9C5B7;
+  --logo-stroke: #15171C;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.12 0.015 265);       /* #0D0F13 navy ink */
+  --foreground: oklch(0.95 0.005 80);
+
+  --card: oklch(0.16 0.015 265);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.16 0.015 265);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.92 0.005 80);
+  --primary-foreground: oklch(0.16 0.015 265);
+
+  --secondary: oklch(0.22 0.015 265);
+  --secondary-foreground: var(--foreground);
+
+  --muted: oklch(0.22 0.015 265);
+  --muted-foreground: oklch(0.65 0.012 80);
+
+  --accent: oklch(0.22 0.015 265);
+  --accent-foreground: var(--foreground);
+
   --destructive: oklch(0.704 0.191 22.216);
+
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
+
+  --sidebar: oklch(0.16 0.015 265);
+  --sidebar-foreground: var(--foreground);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.22 0.015 265);
+  --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Brand-accent en dark */
+  --brand-accent: oklch(0.75 0.13 75);
+  --brand-accent-foreground: oklch(0.12 0.015 265);
+
+  /* Logo mono dark — invertido */
+  --logo-q1: #F1ECDF;
+  --logo-q2: #D5CFBE;
+  --logo-q3: #8F8B7E;
+  --logo-q4: #4A4D55;
+  --logo-stroke: #F1ECDF;
 }
+
+[data-accent="mustard"]  { --brand-accent: oklch(0.7 0.13 75);   --brand-accent-foreground: #15171C; }
+[data-accent="sienna"]   { --brand-accent: oklch(0.6 0.16 30);   --brand-accent-foreground: #ffffff; }
+[data-accent="forest"]   { --brand-accent: oklch(0.48 0.09 155); --brand-accent-foreground: #ffffff; }
+[data-accent="lake"]     { --brand-accent: oklch(0.55 0.18 250); --brand-accent-foreground: #ffffff; }
+[data-accent="plum"]     { --brand-accent: oklch(0.46 0.13 320); --brand-accent-foreground: #ffffff; }
+[data-accent="slate"]    { --brand-accent: oklch(0.45 0.04 250); --brand-accent-foreground: #ffffff; }
+
+.dark [data-accent="mustard"] { --brand-accent: oklch(0.75 0.13 75); --brand-accent-foreground: #15171C; }
+.dark [data-accent="sienna"]  { --brand-accent: oklch(0.65 0.16 30); }
+.dark [data-accent="forest"]  { --brand-accent: oklch(0.55 0.09 155); }
+.dark [data-accent="lake"]    { --brand-accent: oklch(0.62 0.18 250); }
+.dark [data-accent="plum"]    { --brand-accent: oklch(0.55 0.13 320); }
+.dark [data-accent="slate"]   { --brand-accent: oklch(0.55 0.04 250); }
 
 @layer base {
   * {
