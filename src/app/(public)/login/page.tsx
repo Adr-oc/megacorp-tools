@@ -3,18 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LoginForm } from '@/components/auth/login-form'
 import { MagicLinkForm } from '@/components/auth/magic-link-form'
+import { MegacorpLogo } from '@/components/brand/logo'
 
 export default function LoginPage() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-md">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/mega_logo.svg"
-        alt="MEGACORP"
-        width={64}
-        height={64}
-        className="mx-auto mb-6"
-      />
+      <MegacorpLogo variant="brand" size={64} className="mx-auto mb-6" />
       <Card>
         <CardHeader>
           <CardTitle>Iniciar sesión</CardTitle>

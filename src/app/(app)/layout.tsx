@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { auth } from '@/lib/auth/server'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/auth/user-menu'
+import { MegacorpLogo } from '@/components/brand/logo'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -21,8 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="border-b">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/app" className="flex items-center gap-2 font-semibold text-lg">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/mega_logo.svg" alt="MEGACORP" width={28} height={28} />
+            <MegacorpLogo variant="mono" size={28} />
             MegaTools
           </Link>
           <div className="flex items-center gap-2">
