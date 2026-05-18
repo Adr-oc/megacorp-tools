@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>MegaTools — Brief de diseño</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sans: "Geist", "Inter", -apple-system, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+      --paper: #F5F1EA;
+      --ink: #15171C;
+      --ink-2: #4A4D55;
+      --muted: #8A857B;
+      --hairline: #D8D1C2;
+      --accent: #C9961B;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--paper); color: var(--ink);
+      font-family: var(--sans); font-size: 14px; line-height: 1.55;
+    }
+    .page {
+      max-width: 920px; margin: 0 auto;
+      padding: 64px 56px 96px;
+    }
+    .top { display: flex; align-items: center; gap: 14px; margin-bottom: 48px; }
+    .top .name { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+    .top .eyebrow { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.16em; text-transform: uppercase; margin-top: 4px; }
+
+    h1 { font-size: 44px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.05; margin: 0 0 18px; max-width: 700px; }
+    h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.012em; margin: 56px 0 16px; }
+    h3 { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+    p { color: var(--ink-2); margin: 0 0 14px; }
+    p.lead { font-size: 17px; line-height: 1.55; color: var(--ink-2); max-width: 680px; margin-bottom: 28px; }
+    .eyebrow-label { font-family: var(--mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 14px; }
+
+    .rule { height: 1px; background: var(--hairline); margin: 56px 0; border: 0; }
+
+    /* Principle list */
+    ul.principles { padding: 0; margin: 0; list-style: none; display: grid; gap: 18px; }
+    ul.principles li {
+      display: grid; grid-template-columns: 28px 1fr; gap: 18px;
+      padding-bottom: 18px; border-bottom: 1px solid var(--hairline);
+    }
+    ul.principles li:last-child { border-bottom: 0; padding-bottom: 0; }
+    ul.principles .num {
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+      color: var(--accent); padding-top: 3px;
+    }
+    ul.principles .body strong { color: var(--ink); font-weight: 600; }
+
+    /* Logo cards */
+    .logos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 20px; }
+    .logo-card {
+      border: 1px solid var(--hairline);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      background: #fff;
+    }
+    .logo-card .stage {
+      display: flex; align-items: center; justify-content: center;
+      padding: 56px 40px;
+      position: relative;
+    }
+    .logo-card .stage.cream  { background: var(--paper); }
+    .logo-card .stage.white  { background: #FFFFFF; }
+    .logo-card .stage.dark   { background: #0D0F13; }
+    .logo-card .meta { padding: 18px; border-top: 1px solid var(--hairline); }
+    .logo-card .meta .title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+    .logo-card .meta .sub { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.04em; }
+    .swatches { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 14px; padding: 14px 18px 18px; border-top: 1px solid var(--hairline); background: #FAFAF7; }
+    .swatches .sw { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); }
+    .swatches .chip { width: 14px; height: 14px; border: 1px solid rgba(0,0,0,0.08); flex: none; }
+
+    /* Tag */
+    .tag {
+      display: inline-block; font-family: var(--mono); font-size: 10px; padding: 3px 8px;
+      letter-spacing: 0.14em; text-transform: uppercase; border: 1px solid var(--accent); color: var(--accent);
+      margin-bottom: 22px;
+    }
+
+    /* Accent strip */
+    .accent-row { display: flex; gap: 12px; margin-top: 14px; }
+    .accent-row .a {
+      width: 56px; height: 56px; border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.06);
+      display: flex; align-items: flex-end; justify-content: center;
+      padding-bottom: 6px; font-family: var(--mono); font-size: 9.5px; color: rgba(255,255,255,0.85);
+    }
+
+    /* Sidebar pattern diagram */
+    .ctx { display: grid; grid-template-columns: 1.05fr 1fr 1fr; gap: 14px; margin-top: 18px; }
+    .ctx .col {
+      background: #15171C; color: #E7E4DA;
+      padding: 16px 14px; border-radius: 10px;
+      display: flex; flex-direction: column; gap: 8px;
+      font-size: 12px;
+    }
+    .ctx .col .label {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: #8A8C95; margin-bottom: 4px;
+    }
+    .ctx .col .row {
+      display: flex; align-items: center; gap: 8px; padding: 5px 0;
+    }
+    .ctx .col .row.active {
+      background: #23262E; padding: 5px 8px; border-radius: 5px;
+      position: relative;
+    }
+    .ctx .col .row.active::before {
+      content: ''; position: absolute; left: -6px; top: 6px; bottom: 6px;
+      width: 2px; background: var(--accent);
+    }
+    .ctx .col .head {
+      font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: #6F7180; margin-top: 8px;
+    }
+    .ctx .ctx-label {
+      font-size: 11px; color: var(--muted); margin-top: 8px;
+      font-family: var(--mono); letter-spacing: 0.06em;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 96px; padding-top: 24px; border-top: 1px solid var(--hairline);
+      font-family: var(--mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.06em;
+      display: flex; justify-content: space-between;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .page { padding: 32px 24px; max-width: none; }
+      h1 { font-size: 36px; }
+      .logos { gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- Header -->
+    <div class="top">
+      <!-- The mono light logo, inline -->
+      <svg width="40" height="40" viewBox="0 0 100 100" aria-label="MEGACORP">
+        <path d="M50 6 a44 44 0 0 1 44 44 H50 Z" fill="#C9C5B7"/>
+        <path d="M50 50 H94 a44 44 0 0 1 -44 44 Z" fill="#7E7B73"/>
+        <path d="M50 50 H6 a44 44 0 0 0 44 44 Z" fill="#2D3138"/>
+        <path d="M50 6 a44 44 0 0 0 -44 44 H50 Z" fill="#15171C"/>
+        <circle cx="50" cy="50" r="44" fill="none" stroke="#15171C" stroke-width="2.5"/>
+        <line x1="6" y1="50" x2="94" y2="50" stroke="#15171C" stroke-width="2.5"/>
+        <line x1="50" y1="6" x2="50" y2="94" stroke="#15171C" stroke-width="2.5"/>
+      </svg>
+      <div>
+        <div class="name">MegaTools</div>
+        <div class="eyebrow">Brief de diseño · v1 · Mayo 2026</div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <span class="tag">Dirección: Workbench</span>
+    <h1>Portal interno de herramientas para el grupo MEGACORP.</h1>
+    <p class="lead">
+      Una app multi-tenant con un <strong>registry de herramientas</strong> que va creciendo
+      sprint a sprint. Construida sobre Next 16 + Tailwind 4 + shadcn — pero rediseñada con
+      personalidad propia: <strong>utility-first denso al estilo Linear</strong>,
+      <strong>sidebar contextual</strong>, <strong>⌘K command palette</strong>, y un acento de color
+      que cada usuario elige al entrar y lo acompaña en todo el portal.
+    </p>
+
+    <!-- Principles -->
+    <h2>Tres ideas que sostienen el diseño</h2>
+    <ul class="principles">
+      <li>
+        <span class="num">01</span>
+        <div class="body">
+          <strong>Sidebar contextual, no redundante.</strong>
+          El riel izquierdo cambia según el módulo. En home muestra solo el switcher de org y un
+          atajo a lo reciente. Dentro de una app, muestra info y acciones de esa app. En
+          Configuración muestra las secciones (Tu cuenta · Organización). El mismo riel — distinto
+          contenido — nunca duplica lo que ya está en el área principal.
+        </div>
+      </li>
+      <li>
+        <span class="num">02</span>
+        <div class="body">
+          <strong>Accent color por usuario.</strong>
+          Cada persona elige uno de seis colores al onboardear. El accent tiñe CTAs, estados
+          activos, badges y resaltes en toda la UI. Se guarda con el perfil — viaja con el usuario.
+        </div>
+      </li>
+      <li>
+        <span class="num">03</span>
+        <div class="body">
+          <strong>Guía siempre a mano.</strong>
+          Onboarding de 3 pasos (bienvenida → elegí tu color → tour guiado de 6 pasos) y un botón
+          ❓ permanente en el topbar que reabre el tour. Nadie debería sentirse perdido en su
+          primer minuto.
+        </div>
+      </li>
+    </ul>
+
+    <hr class="rule"/>
+
+    <!-- Logo system — the important part -->
+    <h2>Sistema de logo · 3 versiones</h2>
+    <p style="max-width: 680px;">
+      El mark del grupo en tres tratamientos. El <strong>brand</strong> (a color) queda reservado
+      para marketing — landing pública y mails. Adentro del producto siempre va la versión
+      <strong>mono</strong>, que se adapta al theme manteniendo carácter (alto contraste, sin
+      rastro de los colores originales, meridianos gruesos).
+    </p>
+
+    <div class="logos">
+      <!-- Brand -->
+      <div class="logo-card">
+        <div class="stage cream">
+          <svg width="120" height="120" viewBox="0 0 100 100" aria-label="MEGACORP">
+            <path d="M50 6 a44 44 0 0 1 44 44 H50 Z" fill="#B5AC9E"/>
+            <path d="M50 50 H94 a44 44 0 0 1 -44 44 Z" fill="#9F968A"/>
+            <path d="M50 50 H6 a44 44 0 0 0 44 44 Z" fill="#0F1B3D"/>
+            <path d="M50 6 a44 44 0 0 0 -44 44 H50 Z" fill="#D4A017"/>
+            <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(15,27,61,0.55)" stroke-width="1.5"/>
+            <line x1="6" y1="50" x2="94" y2="50" stroke="rgba(15,27,61,0.55)" stroke-width="1.5"/>
+            <line x1="50" y1="6" x2="50" y2="94" stroke="rgba(15,27,61,0.55)" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div class="meta">
+          <div class="title">01 · Brand</div>
+          <div class="sub">Marketing · landing · emails</div>
+        </div>
+        <div class="swatches">
+          <span class="sw"><span class="chip" style="background:#D4A017"></span>#D4A017</span>
+          <span class="sw"><span class="chip" style="background:#0F1B3D"></span>#0F1B3D</span>
+          <span class="sw"><span class="chip" style="background:#B5AC9E"></span>#B5AC9E</span>
+          <span class="sw"><span class="chip" style="background:#9F968A"></span>#9F968A</span>
+        </div>
+      </div>
+
+      <!-- Mono Light -->
+      <div class="logo-card">
+        <div class="stage white">
+          <svg width="120" height="120" viewBox="0 0 100 100" aria-label="MEGACORP">
+            <path d="M50 6 a44 44 0 0 1 44 44 H50 Z" fill="#C9C5B7"/>
+            <path d="M50 50 H94 a44 44 0 0 1 -44 44 Z" fill="#7E7B73"/>
+            <path d="M50 50 H6 a44 44 0 0 0 44 44 Z" fill="#2D3138"/>
+            <path d="M50 6 a44 44 0 0 0 -44 44 H50 Z" fill="#15171C"/>
+            <circle cx="50" cy="50" r="44" fill="none" stroke="#15171C" stroke-width="2.5"/>
+            <line x1="6" y1="50" x2="94" y2="50" stroke="#15171C" stroke-width="2.5"/>
+            <line x1="50" y1="6" x2="50" y2="94" stroke="#15171C" stroke-width="2.5"/>
+          </svg>
+        </div>
+        <div class="meta">
+          <div class="title">02 · Mono · Light</div>
+          <div class="sub">In-product · tema claro</div>
+        </div>
+        <div class="swatches">
+          <span class="sw"><span class="chip" style="background:#15171C"></span>#15171C</span>
+          <span class="sw"><span class="chip" style="background:#2D3138"></span>#2D3138</span>
+          <span class="sw"><span class="chip" style="background:#7E7B73"></span>#7E7B73</span>
+          <span class="sw"><span class="chip" style="background:#C9C5B7"></span>#C9C5B7</span>
+        </div>
+      </div>
+
+      <!-- Mono Dark -->
+      <div class="logo-card">
+        <div class="stage dark">
+          <svg width="120" height="120" viewBox="0 0 100 100" aria-label="MEGACORP">
+            <path d="M50 6 a44 44 0 0 1 44 44 H50 Z" fill="#4A4D55"/>
+            <path d="M50 50 H94 a44 44 0 0 1 -44 44 Z" fill="#8F8B7E"/>
+            <path d="M50 50 H6 a44 44 0 0 0 44 44 Z" fill="#D5CFBE"/>
+            <path d="M50 6 a44 44 0 0 0 -44 44 H50 Z" fill="#F1ECDF"/>
+            <circle cx="50" cy="50" r="44" fill="none" stroke="#F1ECDF" stroke-width="2.5"/>
+            <line x1="6" y1="50" x2="94" y2="50" stroke="#F1ECDF" stroke-width="2.5"/>
+            <line x1="50" y1="6" x2="50" y2="94" stroke="#F1ECDF" stroke-width="2.5"/>
+          </svg>
+        </div>
+        <div class="meta">
+          <div class="title">03 · Mono · Dark</div>
+          <div class="sub">In-product · tema oscuro</div>
+        </div>
+        <div class="swatches">
+          <span class="sw"><span class="chip" style="background:#F1ECDF"></span>#F1ECDF</span>
+          <span class="sw"><span class="chip" style="background:#D5CFBE"></span>#D5CFBE</span>
+          <span class="sw"><span class="chip" style="background:#8F8B7E"></span>#8F8B7E</span>
+          <span class="sw"><span class="chip" style="background:#4A4D55"></span>#4A4D55</span>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top: 28px; font-size: 12.5px; color: var(--muted); max-width: 720px;">
+      Construcción: 4 cuadrantes + 3 meridianos (círculo, horizontal, vertical). Stroke 2.5 en mono
+      para que la geometría se lea con presencia, 1.5 en brand. Tamaños mínimos: 20px (sidebar),
+      28px (topbar), 36px (header / login), 80px+ (onboarding / marketing). Siempre rendereado
+      como SVG inline (no PNG, no img), nunca con CSS filters.
+    </p>
+
+    <hr class="rule"/>
+
+    <!-- Accent presets -->
+    <h2>Accent · 6 presets</h2>
+    <p style="max-width: 680px;">
+      El usuario elige el suyo en el segundo paso del onboarding. Default <strong>Mustard</strong>.
+      Para botones primarios, el sistema calcula automáticamente el color de texto adecuado
+      (negro o blanco) según la luminancia del accent — los seis presets están balanceados para
+      garantizar contraste AA en ambos modos.
+    </p>
+    <div class="accent-row">
+      <div class="a" style="background: #C9961B; color: #15171C;">Mustard</div>
+      <div class="a" style="background: #C24A3C;">Sienna</div>
+      <div class="a" style="background: #2F6B4E;">Forest</div>
+      <div class="a" style="background: #2A6FDB;">Lake</div>
+      <div class="a" style="background: #7B3F8C;">Plum</div>
+      <div class="a" style="background: #475569;">Slate</div>
+    </div>
+
+    <hr class="rule"/>
+
+    <!-- Contextual sidebar mini-diagram -->
+    <h2>Sidebar contextual</h2>
+    <p style="max-width: 680px;">
+      El mismo riel — distinto contenido según donde estás. Cero nav redundante.
+    </p>
+    <div class="ctx">
+      <div class="col">
+        <div class="label">Home</div>
+        <div class="head">Reciente</div>
+        <div class="row">📄 PDF Workbench</div>
+        <div class="row">⚙ Miembros</div>
+        <div style="flex: 1"></div>
+        <div class="ctx-label">/app</div>
+      </div>
+      <div class="col">
+        <div class="label">PDF Workbench</div>
+        <div class="row">← Volver a apps</div>
+        <div class="head">Workspace</div>
+        <div class="row" style="font-size: 11px;">Documentos · 3</div>
+        <div class="row" style="font-size: 11px;">Páginas · 14</div>
+        <div class="head">Acciones</div>
+        <div class="row">⬆ Añadir PDFs</div>
+        <div class="row">⬇ Exportar</div>
+        <div style="flex: 1"></div>
+        <div class="ctx-label">/app/tools/pdf-workbench</div>
+      </div>
+      <div class="col">
+        <div class="label">Configuración</div>
+        <div class="row">← Volver a apps</div>
+        <div class="head">Tu cuenta</div>
+        <div class="row">👤 Perfil</div>
+        <div class="row">☀ Apariencia</div>
+        <div class="head">Organización</div>
+        <div class="row">🏢 Organización</div>
+        <div class="row active">👥 Miembros</div>
+        <div class="row">▤ Audit log</div>
+        <div style="flex: 1"></div>
+        <div class="ctx-label">/app/settings/miembros</div>
+      </div>
+    </div>
+
+    <hr class="rule"/>
+
+    <!-- Stack -->
+    <h2>Stack & restricciones</h2>
+    <p style="max-width: 680px;">
+      <strong>Next 16</strong> (App Router, TypeScript estricto) · <strong>Tailwind 4</strong> + tokens OKLCH
+      en <code style="font-family: var(--mono); font-size: 12px; background: #FFF; border: 1px solid var(--hairline); padding: 1px 5px;">globals.css</code> ·
+      <strong>shadcn/ui</strong> sobre Base UI (usar lo que ya existe — no rehacer botones) ·
+      <strong>Better Auth</strong> con organización + magic link (Resend para email) ·
+      <strong>Drizzle</strong> + Postgres · <strong>Playwright</strong> para E2E ·
+      <strong>@dnd-kit</strong> para drag-drop en PDF · <strong>cmdk</strong> para la palette ·
+      <strong>next-themes</strong> para light/dark.
+    </p>
+    <p style="max-width: 680px;">
+      Todo el copy es en <strong>español rioplatense</strong>. Mantener.
+    </p>
+
+    <footer>
+      <span>MegaTools · Brief v1</span>
+      <span>Grupo MEGACORP · 2026</span>
+    </footer>
+  </div>
+</body>
+</html>
