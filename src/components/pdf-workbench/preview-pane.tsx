@@ -1,15 +1,33 @@
 'use client'
 
-import { Copy, Download, RotateCw, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Copy, Download, Minus, Plus, RotateCw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDispatch, useWorkspace } from '@/lib/pdf/document-store'
 import { buildFilename, downloadBytes, exportPages } from '@/lib/pdf/exporter'
 import { toast } from 'sonner'
 
+const ZOOM_LEVELS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3] as const
+
+function nextZoom(current: number, dir: 1 | -1): number {
+  const idx = ZOOM_LEVELS.findIndex((z) => z >= current - 0.001)
+  const target = idx + dir
+  if (target < 0) return ZOOM_LEVELS[0]!
+  if (target >= ZOOM_LEVELS.length) return ZOOM_LEVELS[ZOOM_LEVELS.length - 1]!
+  return ZOOM_LEVELS[target]!
+}
+
 export function PreviewPane() {
   const workspace = useWorkspace()
   const { pages, pdfs, thumbnails, selection } = workspace
   const dispatch = useDispatch()
+  const [zoom, setZoom] = useState(1)
+
+  // Resetear zoom cuando cambia la selección
+  const selectionKey = Array.from(selection).join(',')
+  useEffect(() => {
+    setZoom(1)
+  }, [selectionKey])
 
   if (selection.size === 0) return null
 
@@ -17,7 +35,7 @@ export function PreviewPane() {
   if (selection.size > 1) {
     const ids = Array.from(selection)
     return (
-      <aside className="w-80 shrink-0 border-l pl-4 space-y-4">
+      <aside className="w-96 shrink-0 border-l pl-4 space-y-4 lg:w-[28rem]">
         <div>
           <div className="text-sm text-muted-foreground">Selección</div>
           <div className="text-2xl font-bold">{selection.size} páginas</div>
@@ -62,9 +80,7 @@ export function PreviewPane() {
   const thumb = thumbnails[page.id]
   const isSource = page.kind === 'source'
   const sourcePdf = isSource ? pdfs[page.sourceId] : null
-  const sourceLabel = isSource
-    ? sourcePdf?.name ?? 'PDF'
-    : 'Página en blanco'
+  const sourceLabel = isSource ? sourcePdf?.name ?? 'PDF' : 'Página en blanco'
   const pageInfo = isSource
     ? `Página ${page.sourceIndex + 1} del original`
     : `${page.width} × ${page.height} pt`
@@ -85,7 +101,7 @@ export function PreviewPane() {
   }
 
   return (
-    <aside className="w-80 shrink-0 border-l pl-4 space-y-3 lg:w-96">
+    <aside className="w-96 shrink-0 border-l pl-4 space-y-3 lg:w-[28rem] xl:w-[32rem]">
       <div className="space-y-1">
         <div className="text-xs uppercase tracking-wide text-muted-foreground">Preview</div>
         <div className="text-sm font-medium truncate" title={sourceLabel}>
@@ -95,17 +111,54 @@ export function PreviewPane() {
         <div className="text-xs text-muted-foreground">{positionInfo}</div>
       </div>
 
-      <div className="rounded-md border bg-muted/40 overflow-hidden aspect-[0.7] flex items-center justify-center">
+      {/* Controles de zoom */}
+      <div className="flex items-center justify-between gap-2 rounded-md border bg-card px-2 py-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={() => setZoom((z) => nextZoom(z, -1))}
+          disabled={zoom <= ZOOM_LEVELS[0]!}
+          aria-label="Alejar"
+        >
+          <Minus className="h-4 w-4" />
+        </Button>
+        <button
+          type="button"
+          onClick={() => setZoom(1)}
+          className="text-xs font-medium tabular-nums hover:underline"
+          title="Restablecer zoom"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={() => setZoom((z) => nextZoom(z, 1))}
+          disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]!}
+          aria-label="Acercar"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="rounded-md border bg-muted/40 overflow-auto max-h-[70vh] flex items-center justify-center min-h-[400px]">
         {thumb ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={thumb}
             alt={`Preview ${sourceLabel}`}
-            className="max-w-full max-h-full object-contain"
-            style={{ transform: isSource ? `rotate(${page.rotation}deg)` : undefined }}
+            className="block transition-transform"
+            style={{
+              transform: `scale(${zoom})${isSource ? ` rotate(${page.rotation}deg)` : ''}`,
+              transformOrigin: 'center center',
+              maxWidth: zoom <= 1 ? '100%' : 'none',
+              maxHeight: zoom <= 1 ? '70vh' : 'none',
+            }}
           />
         ) : (
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground py-24">
             {page.kind === 'blank' ? 'En blanco' : 'Renderizando…'}
           </div>
         )}
