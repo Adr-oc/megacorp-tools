@@ -1,8 +1,15 @@
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs'
 
-// El legacy build no necesita worker explícito.
-// Lo desactivamos para evitar fetchear el worker de un CDN.
-pdfjs.GlobalWorkerOptions.workerSrc = ''
+// pdfjs-dist v5 requiere worker. `new Worker(new URL(...))` es el patrón que
+// Turbopack/Webpack 5 detectan estáticamente para empaquetar el worker.
+// Se crea una sola vez al cargar el módulo (lazy en cliente, porque este
+// módulo solo se importa desde componentes 'use client').
+if (typeof window !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerPort) {
+  pdfjs.GlobalWorkerOptions.workerPort = new Worker(
+    new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url),
+    { type: 'module' },
+  )
+}
 
 export type ThumbnailRequest = {
   pageId: string
@@ -47,7 +54,10 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
 
 export async function renderThumbnail(req: ThumbnailRequest): Promise<ThumbnailResult> {
   return enqueue(async () => {
-    const loadingTask = pdfjs.getDocument({ data: req.bytes })
+    // Clonamos los bytes: pdfjs.getDocument transfiere el ArrayBuffer al worker,
+    // lo cual deja el Uint8Array original vacío y rompe usos posteriores
+    // (ej. pdf-lib en exportPages tomando state.pdfs[id].bytes).
+    const loadingTask = pdfjs.getDocument({ data: req.bytes.slice() })
     const doc = await loadingTask.promise
     try {
       const page = await doc.getPage(req.sourceIndex + 1)
