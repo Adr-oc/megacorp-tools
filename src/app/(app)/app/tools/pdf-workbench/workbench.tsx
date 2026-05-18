@@ -5,6 +5,7 @@ import { WorkspaceProvider, useLoadPdf, useStateBridge, useWorkspace } from '@/l
 import { EmptyState } from '@/components/pdf-workbench/empty-state'
 import { ExportMenu } from '@/components/pdf-workbench/export-menu'
 import { PageGrid } from '@/components/pdf-workbench/page-grid'
+import { PreviewPane } from '@/components/pdf-workbench/preview-pane'
 import { Toolbar } from '@/components/pdf-workbench/toolbar'
 import { UploadZone } from '@/components/pdf-workbench/upload-zone'
 
@@ -39,7 +40,12 @@ function WorkbenchInner() {
             {selection.size > 0 && ` · ${selection.size} seleccionada${selection.size === 1 ? '' : 's'}`}
           </div>
           <Toolbar />
-          <PageGrid />
+          <div className="flex gap-4">
+            <div className="flex-1 min-w-0">
+              <PageGrid />
+            </div>
+            <PreviewPane />
+          </div>
         </>
       )}
     </div>

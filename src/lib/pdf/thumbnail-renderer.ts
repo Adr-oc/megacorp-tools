@@ -22,7 +22,7 @@ export type ThumbnailResult = {
   dataUrl: string
 }
 
-const MAX_WIDTH = 280
+const MAX_WIDTH = 400
 
 // Cola de jobs por PDF (no por página) — saturar el worker con N getDocument()
 // paralelos lo deja colgado a partir de ~4. Cargamos el doc UNA vez por PDF
