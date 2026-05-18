@@ -30,6 +30,8 @@ export type WorkspacePage =
       height: number
     }
 
+export type ExportQuality = 'high' | 'medium' | 'low'
+
 export type WorkspaceState = {
   pdfs: Record<PdfId, LoadedPdf>
   pages: WorkspacePage[]
@@ -37,6 +39,7 @@ export type WorkspaceState = {
   thumbnails: Record<PageId, string>  // dataURL
   lastSelectedId: PageId | null       // para shift-clic rango
   exporting: boolean                  // spinner de export
+  exportQuality: ExportQuality
 }
 
 export function createInitialState(): WorkspaceState {
@@ -47,5 +50,6 @@ export function createInitialState(): WorkspaceState {
     thumbnails: {},
     lastSelectedId: null,
     exporting: false,
+    exportQuality: 'high',
   }
 }

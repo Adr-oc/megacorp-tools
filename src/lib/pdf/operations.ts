@@ -1,5 +1,5 @@
 import { ulid } from 'ulid'
-import type { PageId, WorkspaceState, WorkspacePage } from './types'
+import type { ExportQuality, PageId, WorkspaceState, WorkspacePage } from './types'
 
 export type Action =
   | {
@@ -23,6 +23,7 @@ export type Action =
   | { type: 'thumbnail/set'; id: PageId; dataUrl: string }
   | { type: 'export/start' }
   | { type: 'export/end' }
+  | { type: 'export/setQuality'; quality: ExportQuality }
 
 function pageSize(preset: 'a4' | 'letter'): { width: number; height: number } {
   // switch agota la unión — el compilador sabe que el retorno es siempre definido,
@@ -190,6 +191,9 @@ export function reducer(state: WorkspaceState, action: Action): WorkspaceState {
 
     case 'export/end':
       return { ...state, exporting: false }
+
+    case 'export/setQuality':
+      return { ...state, exportQuality: action.quality }
 
     default:
       return state

@@ -2,6 +2,7 @@
 
 import { useRef } from 'react'
 import { WorkspaceProvider, useLoadPdf, useStateBridge, useWorkspace } from '@/lib/pdf/document-store'
+import { DownloadSelectionButton } from '@/components/pdf-workbench/download-selection-button'
 import { EmptyState } from '@/components/pdf-workbench/empty-state'
 import { ExportMenu } from '@/components/pdf-workbench/export-menu'
 import { PageGrid } from '@/components/pdf-workbench/page-grid'
@@ -25,6 +26,7 @@ function WorkbenchInner() {
         <h1 className="text-2xl font-bold">PDF Workbench</h1>
         <div className="flex items-center gap-2">
           {pages.length > 0 && <UploadZone onFiles={onFiles} registerTrigger={(fn) => { triggerPickerRef.current = fn }} />}
+          {pages.length > 0 && <DownloadSelectionButton />}
           {pages.length > 0 && <ExportMenu />}
         </div>
       </div>
