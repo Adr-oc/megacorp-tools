@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth/server'
+import { coerceAccent } from '@/lib/accent/presets'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/auth/user-menu'
 import { MegacorpLogo } from '@/components/brand/logo'
@@ -17,8 +18,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/verify-email-pending')
   }
 
+  const accent = coerceAccent((session.user as { accentColor?: unknown }).accentColor)
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div data-accent={accent} data-accent-root className="min-h-screen flex flex-col">
       <header className="border-b">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/app" className="flex items-center gap-2 font-semibold text-lg">
