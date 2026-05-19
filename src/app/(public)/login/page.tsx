@@ -16,13 +16,23 @@ export default function LoginPage() {
         <CardContent>
           <Tabs defaultValue="password">
             <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="password">Contraseña</TabsTrigger>
-              <TabsTrigger value="magic">Enlace mágico</TabsTrigger>
+              <TabsTrigger
+                value="password"
+                className="data-[state=active]:text-brand-accent data-[state=active]:border-b-2 data-[state=active]:border-brand-accent"
+              >
+                Contraseña
+              </TabsTrigger>
+              <TabsTrigger
+                value="magic"
+                className="data-[state=active]:text-brand-accent data-[state=active]:border-b-2 data-[state=active]:border-brand-accent"
+              >
+                Enlace mágico
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="password">
               <LoginForm />
               <p className="text-sm text-muted-foreground mt-4 text-center">
-                <Link href="/forgot-password" className="underline">
+                <Link href="/forgot-password" className="text-brand-accent underline underline-offset-2">
                   ¿Olvidaste tu contraseña?
                 </Link>
               </p>
