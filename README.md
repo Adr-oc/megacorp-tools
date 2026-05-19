@@ -109,6 +109,16 @@ Resumen:
 - Registry de apps en `src/lib/apps/registry.ts` (single source of truth)
 - Cada herramienta = una entrada en el registry + una carpeta en `src/app/(app)/tools/`
 
+## Diseño
+
+El portal sigue el brief en `docs/brand/2026-05-megatools-brief-v1.html`:
+paleta cream paper / navy ink, tipografías Geist + JetBrains Mono +
+Instrument Serif (italic, hero), logo MEGACORP en 3 tratamientos
+(brand para marketing, mono adaptativo al tema para in-product) y
+**accent color por usuario** con 6 presets (Mustard por default). Cada
+persona elige el suyo en `Settings → Apariencia` y acompaña sus CTAs,
+focus rings, estados activos de nav y links en todo el portal.
+
 ## Herramientas disponibles
 
 - **PDF Workbench** (`/app/tools/pdf-workbench`) — Combiná, separá, reordená y editá páginas de uno o varios PDFs. Procesamiento 100% en el navegador, los archivos nunca tocan el servidor.
