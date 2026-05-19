@@ -119,6 +119,11 @@ Instrument Serif (italic, hero), logo MEGACORP en 3 tratamientos
 persona elige el suyo en `Settings → Apariencia` y acompaña sus CTAs,
 focus rings, estados activos de nav y links en todo el portal.
 
+**Onboarding.** Al primer login (usuarios sin `user.onboarded_at`),
+el portal los lleva por 3 pasos: bienvenida con datos de su cuenta,
+elegir su color accent, y un tour guiado de 6 pasos. El botón ❓ del
+header reabre el tour en cualquier momento.
+
 ## Herramientas disponibles
 
 - **PDF Workbench** (`/app/tools/pdf-workbench`) — Combiná, separá, reordená y editá páginas de uno o varios PDFs. Procesamiento 100% en el navegador, los archivos nunca tocan el servidor.
