@@ -6,6 +6,7 @@ import { coerceAccent } from '@/lib/accent/presets'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenu } from '@/components/auth/user-menu'
 import { MegacorpLogo } from '@/components/brand/logo'
+import { TourLauncher } from '@/components/help/tour-launcher'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -33,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             MegaTools
           </Link>
           <div className="flex items-center gap-2">
+            <TourLauncher />
             <ThemeToggle />
             <UserMenu user={session.user} />
           </div>
