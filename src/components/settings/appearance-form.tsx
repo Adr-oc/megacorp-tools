@@ -10,8 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { AccentPicker } from '@/components/settings/accent-picker'
+import type { AccentColor } from '@/lib/accent/presets'
 
-export function AppearanceForm() {
+type Props = {
+  initialAccent: AccentColor
+}
+
+export function AppearanceForm({ initialAccent }: Props) {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -20,7 +26,7 @@ export function AppearanceForm() {
   if (!mounted) return null
 
   return (
-    <div className="space-y-4 max-w-md">
+    <div className="space-y-6 max-w-md">
       <div>
         <Label htmlFor="theme">Tema</Label>
         <Select value={theme ?? 'system'} onValueChange={(value) => setTheme(value || 'system')}>
@@ -34,6 +40,7 @@ export function AppearanceForm() {
           </SelectContent>
         </Select>
       </div>
+      <AccentPicker value={initialAccent} />
     </div>
   )
 }
