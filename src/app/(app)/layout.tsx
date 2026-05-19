@@ -18,6 +18,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/verify-email-pending')
   }
 
+  if (!(session.user as { onboardedAt?: Date | string | null }).onboardedAt) {
+    redirect('/onboarding')
+  }
+
   const accent = coerceAccent((session.user as { accentColor?: unknown }).accentColor)
 
   return (
