@@ -20,6 +20,7 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   accentColor: text("accent_color").notNull().default("mustard"),
+  onboardedAt: timestamp("onboarded_at"),
 });
 
 export const session = pgTable(

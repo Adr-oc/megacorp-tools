@@ -22,6 +22,11 @@ export const auth = betterAuth({
         required: false,
         input: true,
       },
+      onboardedAt: {
+        type: 'date',
+        required: false,
+        input: false,
+      },
     },
   },
   emailAndPassword: {
