@@ -19,6 +19,7 @@ export const user = pgTable("user", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  accentColor: text("accent_color").notNull().default("mustard"),
 });
 
 export const session = pgTable(
