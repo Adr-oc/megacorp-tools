@@ -124,6 +124,13 @@ el portal los lleva por 3 pasos: bienvenida con datos de su cuenta,
 elegir su color accent, y un tour guiado de 6 pasos. El botón ❓ del
 header reabre el tour en cualquier momento.
 
+**App shell.** Layout estilo Linear: sidebar contextual a la izquierda
+que cambia según el módulo (recientes en home, info del app abierto
+en herramientas, secciones de configuración en settings); topbar con
+breadcrumbs, búsqueda **⌘K** (navegar a apps + cambiar tema + logout),
+notificaciones y ayuda. El user menu vive en el footer del sidebar.
+En mobile la sidebar se oculta y aparece un drawer con hamburger.
+
 ## Herramientas disponibles
 
 - **PDF Workbench** (`/app/tools/pdf-workbench`) — Combiná, separá, reordená y editá páginas de uno o varios PDFs. Procesamiento 100% en el navegador, los archivos nunca tocan el servidor.
