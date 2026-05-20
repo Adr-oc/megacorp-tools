@@ -128,7 +128,7 @@ export function CommandPalette() {
                     <Command.Group
                       key={g}
                       heading={g}
-                      className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground"
+                      className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.14em] [&_[cmdk-group-heading]]:text-muted-foreground"
                     >
                       {groupItems.map((it) => (
                         <Command.Item
