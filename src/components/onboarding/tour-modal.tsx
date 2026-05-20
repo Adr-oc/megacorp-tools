@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowLeft, ArrowRight, FileText, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MegacorpLogo } from '@/components/brand/logo'
@@ -14,9 +15,12 @@ type Props = {
 
 export function TourModal({ mode, onClose, onSkip }: Props) {
   const [i, setI] = useState(0)
+  const [mounted, setMounted] = useState(false)
   const step = TOUR_STEPS[i]!
   const isLast = i === TOUR_STEPS.length - 1
   const isFirst = i === 0
+
+  useEffect(() => setMounted(true), [])
 
   function next() {
     if (isLast) onClose()
@@ -26,7 +30,9 @@ export function TourModal({ mode, onClose, onSkip }: Props) {
     if (!isFirst) setI((v) => v - 1)
   }
 
-  return (
+  if (!mounted) return null
+
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto bg-foreground/60">
       <div className="min-h-full flex items-center justify-center p-4">
         <div className="w-full max-w-2xl rounded-2xl bg-card border shadow-xl overflow-hidden my-auto">
@@ -107,6 +113,7 @@ export function TourModal({ mode, onClose, onSkip }: Props) {
         </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

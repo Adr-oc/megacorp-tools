@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { Command } from 'cmdk'
@@ -28,8 +29,11 @@ type Item = {
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+
+  useEffect(() => setMounted(true), [])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -103,7 +107,7 @@ export function CommandPalette() {
         <Search className="h-4 w-4" />
       </button>
 
-      {open && (
+      {open && mounted && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/60 p-4 pt-[15vh]"
           onClick={() => setOpen(false)}
@@ -155,7 +159,8 @@ export function CommandPalette() {
               </Command.List>
             </Command>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )
