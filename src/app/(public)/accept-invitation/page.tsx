@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AcceptInvitationForm } from '@/components/auth/accept-invitation-form'
 
@@ -9,7 +10,9 @@ export default function AcceptInvitationPage() {
           <CardTitle>Aceptar invitación</CardTitle>
         </CardHeader>
         <CardContent>
-          <AcceptInvitationForm />
+          <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando…</p>}>
+            <AcceptInvitationForm />
+          </Suspense>
         </CardContent>
       </Card>
     </div>

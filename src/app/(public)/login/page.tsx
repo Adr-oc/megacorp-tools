@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -30,7 +31,9 @@ export default function LoginPage() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="password">
-              <LoginForm />
+              <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando…</p>}>
+                <LoginForm />
+              </Suspense>
               <p className="text-sm text-muted-foreground mt-4 text-center">
                 <Link href="/forgot-password" className="text-brand-accent underline underline-offset-2">
                   ¿Olvidaste tu contraseña?
