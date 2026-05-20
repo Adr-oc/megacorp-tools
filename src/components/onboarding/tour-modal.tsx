@@ -27,9 +27,10 @@ export function TourModal({ mode, onClose, onSkip }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60 p-4 overflow-y-auto">
-      <div className="w-full max-w-2xl rounded-2xl bg-card border shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="grid grid-cols-[180px_1fr] min-h-0 flex-1 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-foreground/60">
+      <div className="min-h-full flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl rounded-2xl bg-card border shadow-xl overflow-hidden my-auto">
+          <div className="grid grid-cols-[180px_1fr]">
           <div className="bg-muted/40 p-8 flex flex-col items-start justify-between border-r">
             <MegacorpLogo variant="mono" size={32} />
             <div>
@@ -103,6 +104,7 @@ export function TourModal({ mode, onClose, onSkip }: Props) {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
