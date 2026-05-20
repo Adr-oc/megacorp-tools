@@ -88,7 +88,8 @@ test('exporta documento completo y descarga un PDF válido', async ({ page }) =>
   await expect(page.locator('[data-page-id]')).toHaveCount(3)
 
   const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('button', { name: /exportar/i }).click()
+  // Scope al main para no chocar con el botón "Exportar" del sidebar (variant app)
+  await page.getByRole('main').getByRole('button', { name: /exportar/i }).click()
   await page.getByRole('menuitem', { name: /documento completo/i }).click()
   const dl = await downloadPromise
 
