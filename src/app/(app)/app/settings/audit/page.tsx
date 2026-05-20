@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth/server'
 import { db } from '@/lib/db'
 import { member } from '@/lib/db/schema/auth'
+import { TrackSettings } from '../_track-settings'
 
 export default async function AuditPage() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -22,6 +23,7 @@ export default async function AuditPage() {
   }
   return (
     <div>
+      <TrackSettings />
       <h1 className="text-2xl font-bold mb-2">Audit log</h1>
       <p className="text-muted-foreground mb-6">Registro de eventos de la organización.</p>
       <div className="rounded-lg border bg-muted/30 p-12 text-center">

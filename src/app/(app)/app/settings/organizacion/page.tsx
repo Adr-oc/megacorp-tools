@@ -6,6 +6,7 @@ import { member, organization } from '@/lib/db/schema/auth'
 import { OrganizationForm } from '@/components/settings/organization-form'
 import { MembersList } from '@/components/settings/members-list'
 import { Separator } from '@/components/ui/separator'
+import { TrackSettings } from '../_track-settings'
 
 export default async function OrganizationPage() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -35,6 +36,7 @@ export default async function OrganizationPage() {
 
   return (
     <div className="space-y-8">
+      <TrackSettings />
       <div>
         <h1 className="text-2xl font-bold mb-2">Organización</h1>
         <p className="text-muted-foreground mb-6">Datos y miembros de tu organización.</p>

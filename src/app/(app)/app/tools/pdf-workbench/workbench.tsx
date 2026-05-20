@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { WorkspaceProvider, useLoadPdf, useStateBridge, useWorkspace } from '@/lib/pdf/document-store'
+import { addRecent } from '@/lib/recents/client'
 import { DownloadSelectionButton } from '@/components/pdf-workbench/download-selection-button'
 import { EmptyState } from '@/components/pdf-workbench/empty-state'
 import { ExportMenu } from '@/components/pdf-workbench/export-menu'
@@ -15,6 +16,10 @@ function WorkbenchInner() {
   const { pages, pdfs, selection } = useWorkspace()
   const loadPdf = useLoadPdf()
   const triggerPickerRef = useRef<() => void>(() => {})
+
+  useEffect(() => {
+    addRecent('pdf-workbench')
+  }, [])
 
   async function onFiles(files: File[]) {
     for (const f of files) await loadPdf(f)
