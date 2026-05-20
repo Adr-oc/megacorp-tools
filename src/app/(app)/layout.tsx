@@ -1,12 +1,12 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
+import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth/server'
+import { db } from '@/lib/db'
+import { member, organization } from '@/lib/db/schema/auth'
 import { coerceAccent } from '@/lib/accent/presets'
-import { ThemeToggle } from '@/components/theme-toggle'
-import { UserMenu } from '@/components/auth/user-menu'
-import { MegacorpLogo } from '@/components/brand/logo'
-import { TourLauncher } from '@/components/help/tour-launcher'
+import { AppSidebar } from '@/components/shell/app-sidebar'
+import { Topbar } from '@/components/shell/topbar'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -14,33 +14,45 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session) {
     redirect('/login')
   }
-
   if (!session.user.emailVerified) {
     redirect('/verify-email-pending')
   }
-
   if (!(session.user as { onboardedAt?: Date | string | null }).onboardedAt) {
     redirect('/onboarding')
   }
 
   const accent = coerceAccent((session.user as { accentColor?: unknown }).accentColor)
 
+  const activeOrgId = session.session.activeOrganizationId
+  let orgName: string | null = null
+  let role: 'owner' | 'admin' | 'member' = 'member'
+
+  if (activeOrgId) {
+    const [org] = await db
+      .select()
+      .from(organization)
+      .where(eq(organization.id, activeOrgId))
+      .limit(1)
+    orgName = org?.name ?? null
+    const [m] = await db
+      .select()
+      .from(member)
+      .where(and(eq(member.userId, session.user.id), eq(member.organizationId, activeOrgId)))
+      .limit(1)
+    role = (m?.role ?? 'member') as 'owner' | 'admin' | 'member'
+  }
+
   return (
-    <div data-accent={accent} data-accent-root className="min-h-screen flex flex-col">
-      <header className="border-b">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/app" className="flex items-center gap-2 font-semibold text-lg">
-            <MegacorpLogo variant="mono" size={28} />
-            MegaTools
-          </Link>
-          <div className="flex items-center gap-2">
-            <TourLauncher />
-            <ThemeToggle />
-            <UserMenu user={session.user} />
-          </div>
-        </div>
-      </header>
-      <main className="flex-1 container mx-auto px-4 py-8">{children}</main>
+    <div data-accent={accent} data-accent-root className="h-screen flex">
+      <div className="hidden lg:block h-full">
+        <AppSidebar user={session.user} orgName={orgName} role={role} />
+      </div>
+      <div className="flex-1 flex flex-col min-w-0">
+        <Topbar orgName={orgName} user={session.user} role={role} />
+        <main className="flex-1 overflow-y-auto">
+          <div className="container mx-auto px-4 py-8 max-w-7xl">{children}</div>
+        </main>
+      </div>
     </div>
   )
 }
