@@ -36,11 +36,16 @@ export function CommandPalette() {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault()
         setOpen((v) => !v)
+        return
+      }
+      if (e.key === 'Escape' && open) {
+        e.preventDefault()
+        setOpen(false)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [open])
 
   function go(href: string) {
     setOpen(false)
@@ -100,7 +105,7 @@ export function CommandPalette() {
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/40 backdrop-blur-sm p-4 pt-[20vh]"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/60 p-4 pt-[15vh]"
           onClick={() => setOpen(false)}
         >
           <div
