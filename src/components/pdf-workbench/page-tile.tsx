@@ -1,22 +1,25 @@
 'use client'
 
+import { memo } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Copy, RotateCw, Trash2 } from 'lucide-react'
-import { useWorkspace, useDispatch } from '@/lib/pdf/document-store'
+import { useDispatch } from '@/lib/pdf/document-store'
 import type { WorkspacePage } from '@/lib/pdf/types'
 import { cn } from '@/lib/utils'
-import { exportPages, buildFilename, downloadBytes } from '@/lib/pdf/exporter'
 
 type Props = {
   page: WorkspacePage
+  selected: boolean
+  thumb: string | undefined
+  badgeColor: string | null
+  badgeLabel: string | null
+  sourceLabel: string
+  onDownloadOne: (id: string) => void
 }
 
-export function PageTile({ page }: Props) {
-  const workspace = useWorkspace()
-  const { pdfs, thumbnails, selection } = workspace
+function PageTileBase({ page, selected, thumb, badgeColor, badgeLabel, sourceLabel, onDownloadOne }: Props) {
   const dispatch = useDispatch()
-  const selected = selection.has(page.id)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: page.id })
 
   const style = {
@@ -25,26 +28,9 @@ export function PageTile({ page }: Props) {
     opacity: isDragging ? 0.4 : 1,
   }
 
-  const badge = page.kind === 'source' ? pdfs[page.sourceId]?.badge : null
-  const sourceLabel =
-    page.kind === 'source'
-      ? `${pdfs[page.sourceId]?.name ?? 'PDF'} · pág. ${page.sourceIndex + 1}`
-      : 'En blanco'
-  const thumb = thumbnails[page.id]
-
   function onClick(e: React.MouseEvent) {
     const mode = e.shiftKey ? 'range' : e.metaKey || e.ctrlKey ? 'add' : 'single'
     dispatch({ type: 'selection/toggle', id: page.id, mode })
-  }
-
-  async function onDownloadOne() {
-    dispatch({ type: 'export/start' })
-    try {
-      const bytes = await exportPages(workspace, [page.id])
-      downloadBytes(bytes, buildFilename(workspace, [page.id], 'single'))
-    } finally {
-      dispatch({ type: 'export/end' })
-    }
   }
 
   return (
@@ -82,12 +68,12 @@ export function PageTile({ page }: Props) {
       )}
 
       {/* Badge de PDF origen */}
-      {badge && (
+      {badgeColor && badgeLabel && (
         <span
           className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white shadow z-10"
-          style={{ backgroundColor: badge.color }}
+          style={{ backgroundColor: badgeColor }}
         >
-          {badge.label}
+          {badgeLabel}
         </span>
       )}
 
@@ -133,7 +119,7 @@ export function PageTile({ page }: Props) {
           type="button"
           onClick={(e) => {
             e.stopPropagation()
-            void onDownloadOne()
+            onDownloadOne(page.id)
           }}
           className="rounded bg-background/90 hover:bg-background p-1 shadow text-xs px-1.5"
           aria-label="Descargar esta página"
@@ -157,3 +143,5 @@ export function PageTile({ page }: Props) {
     </div>
   )
 }
+
+export const PageTile = memo(PageTileBase)

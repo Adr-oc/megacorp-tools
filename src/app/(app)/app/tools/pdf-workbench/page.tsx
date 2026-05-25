@@ -1,7 +1,7 @@
 import { requireApp } from '@/lib/permissions/require-app'
-import { Workbench } from './workbench'
+import { WorkbenchLoader } from './workbench-loader'
 
 export default async function PdfWorkbenchPage() {
   await requireApp('pdf-workbench')
-  return <Workbench />
+  return <WorkbenchLoader />
 }
