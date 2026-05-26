@@ -17,7 +17,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { authClient } from '@/lib/auth/client'
 
 const schema = z
   .object({
@@ -42,8 +41,11 @@ export function AcceptInvitationForm() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
   const [info, setInfo] = useState<InvitationInfo>(null)
-  const [loadingInfo, setLoadingInfo] = useState(true)
+  const [fetchDone, setFetchDone] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  // Sin token no hay nada que cargar, así que loadingInfo nace en false
+  // sin necesidad de un setState síncrono en el body del effect.
+  const loadingInfo = token ? !fetchDone : false
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -51,19 +53,16 @@ export function AcceptInvitationForm() {
   })
 
   useEffect(() => {
-    if (!token) {
-      setLoadingInfo(false)
-      return
-    }
+    if (!token) return
+
+    let cancelled = false
     // Llamar al endpoint público que retorna email + org name.
     // No usamos /api/auth/organization/get-invitation porque requiere sesión activa.
     fetch(`/api/invitations?id=${encodeURIComponent(token)}`)
       .then(async (res) => {
-        if (!res.ok) {
-          setLoadingInfo(false)
-          return
-        }
+        if (!res.ok || cancelled) return
         const data = await res.json()
+        if (cancelled) return
         if (data && data.email && (data.organizationName ?? data.organization?.name)) {
           setInfo({
             email: data.email,
@@ -72,7 +71,13 @@ export function AcceptInvitationForm() {
         }
       })
       .catch(() => {})
-      .finally(() => setLoadingInfo(false))
+      .finally(() => {
+        if (!cancelled) setFetchDone(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [token])
 
   if (loadingInfo) {
