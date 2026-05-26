@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Copy, Download, Minus, Plus, RotateCw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDispatch, useWorkspace } from '@/lib/pdf/document-store'
@@ -24,14 +24,21 @@ export function PreviewPane() {
   const { pages, pdfs, thumbnails, selection } = workspace
   const dispatch = useDispatch()
   const [zoom, setZoom] = useState(1)
+  const [isDragging, setIsDragging] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const dragRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
+  const dragStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
 
-  // Resetear zoom cuando cambia la selección
+  // Resetear zoom cuando cambia la selección, vía el patrón "ajustar estado al
+  // cambiar input": comparamos contra el valor previo guardado en estado y, si
+  // difiere, disparamos un setState durante el render. React reinicia el
+  // render con el nuevo valor sin commit intermedio.
+  // Referencia: https://react.dev/reference/react/useState#storing-information-from-previous-renders
   const selectionKey = Array.from(selection).join(',')
-  useEffect(() => {
+  const [lastSelectionKey, setLastSelectionKey] = useState(selectionKey)
+  if (lastSelectionKey !== selectionKey) {
+    setLastSelectionKey(selectionKey)
     setZoom(1)
-  }, [selectionKey])
+  }
 
   // Scroll del mouse sobre el preview hace zoom (intercepta el scroll del scroll-container)
   const onWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
@@ -43,17 +50,21 @@ export function PreviewPane() {
     setZoom((z) => nextZoom(z, e.deltaY < 0 ? 1 : -1))
   }, [])
 
-  // Drag-to-pan cuando hay zoom > 1
+  // Drag-to-pan cuando hay zoom > 1. Mantenemos los datos de posición en un
+  // ref (no afectan UI hasta el próximo pointermove) y la bandera "estoy
+  // arrastrando" en estado, porque se lee durante render para elegir el
+  // cursor (grabbing vs grab).
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const el = scrollRef.current
     if (!el || zoom <= 1) return
     el.setPointerCapture(e.pointerId)
-    dragRef.current = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop }
+    dragStartRef.current = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop }
+    setIsDragging(true)
   }, [zoom])
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const el = scrollRef.current
-    const start = dragRef.current
+    const start = dragStartRef.current
     if (!el || !start) return
     el.scrollLeft = start.left - (e.clientX - start.x)
     el.scrollTop = start.top - (e.clientY - start.y)
@@ -62,7 +73,8 @@ export function PreviewPane() {
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const el = scrollRef.current
     if (el && el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId)
-    dragRef.current = null
+    dragStartRef.current = null
+    setIsDragging(false)
   }, [])
 
   if (selection.size === 0) return null
@@ -138,7 +150,7 @@ export function PreviewPane() {
   const onDoubleClick = () => setZoom((z) => (z === 1 ? 2 : 1))
   const isZoomed = zoom > 1
   const cursorClass = isZoomed
-    ? dragRef.current
+    ? isDragging
       ? 'cursor-grabbing'
       : 'cursor-grab'
     : 'cursor-zoom-in'
