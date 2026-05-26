@@ -22,8 +22,12 @@ export function PageGrid() {
 
   // Mantenemos workspace en un ref para que el callback de download
   // sea estable y no rompa el memo de PageTile en cada cambio del store.
+  // El sync vive en un effect porque escribir al ref durante render rompe
+  // la pureza del componente (react-hooks/refs).
   const workspaceRef = useRef(workspace)
-  workspaceRef.current = workspace
+  useEffect(() => {
+    workspaceRef.current = workspace
+  })
 
   const onDownloadOne = useCallback(
     async (pageId: string) => {
