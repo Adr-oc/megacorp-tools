@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,15 +14,19 @@ type Props = {
 }
 
 export function MobileNav({ orgName, user, role }: Props) {
-  const [open, setOpen] = useState(false)
   const pathname = usePathname()
+  // Guardamos el pathname en el que se abrió el sheet; si el pathname actual
+  // cambia (navegación), open queda automáticamente en false. Reemplaza el
+  // useEffect(() => setOpen(false), [pathname]).
+  const [openedAt, setOpenedAt] = useState<string | null>(null)
+  const open = openedAt === pathname
 
-  useEffect(() => {
-    setOpen(false)
-  }, [pathname])
+  function onOpenChange(next: boolean) {
+    setOpenedAt(next ? pathname : null)
+  }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger
         render={
           <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menú">
