@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, ArrowRight, FileText, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MegacorpLogo } from '@/components/brand/logo'
+import { useIsMounted } from '@/hooks/use-is-mounted'
 import { TOUR_STEPS } from './tour-steps'
 
 type Props = {
@@ -15,12 +16,10 @@ type Props = {
 
 export function TourModal({ mode, onClose, onSkip }: Props) {
   const [i, setI] = useState(0)
-  const [mounted, setMounted] = useState(false)
+  const mounted = useIsMounted()
   const step = TOUR_STEPS[i]!
   const isLast = i === TOUR_STEPS.length - 1
   const isFirst = i === 0
-
-  useEffect(() => setMounted(true), [])
 
   function next() {
     if (isLast) onClose()

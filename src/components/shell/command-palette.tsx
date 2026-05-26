@@ -17,6 +17,7 @@ import {
   User,
 } from 'lucide-react'
 import { authClient } from '@/lib/auth/client'
+import { useIsMounted } from '@/hooks/use-is-mounted'
 import { cn } from '@/lib/utils'
 
 type Item = {
@@ -29,11 +30,9 @@ type Item = {
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const mounted = useIsMounted()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
-
-  useEffect(() => setMounted(true), [])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

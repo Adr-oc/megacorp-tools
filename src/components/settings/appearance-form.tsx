@@ -1,7 +1,7 @@
 'use client'
 
 import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
+import { useIsMounted } from '@/hooks/use-is-mounted'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -19,9 +19,7 @@ type Props = {
 
 export function AppearanceForm({ initialAccent }: Props) {
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => setMounted(true), [])
+  const mounted = useIsMounted()
 
   if (!mounted) return null
 
