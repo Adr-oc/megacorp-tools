@@ -22,7 +22,7 @@ export default function VerifyEmailPendingPage() {
       } else {
         toast.success('Email reenviado')
       }
-    } catch (err) {
+    } catch {
       toast.error('Error de red')
     } finally {
       setIsLoading(false)

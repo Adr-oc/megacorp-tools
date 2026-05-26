@@ -51,7 +51,7 @@ export function ForgotPasswordForm() {
       }
 
       setSent(true)
-    } catch (err) {
+    } catch {
       toast.error('Error al procesar la solicitud')
     } finally {
       setIsLoading(false)
