@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 
 export type RecentApp = {
   appId: string
@@ -41,19 +41,32 @@ export function addRecent(appId: string): void {
   }
 }
 
+const EMPTY_RECENTS: RecentApp[] = []
+let cachedSnapshot: RecentApp[] = EMPTY_RECENTS
+let cachedRaw: string | null | undefined = undefined
+
+function getRecentsSnapshot(): RecentApp[] {
+  if (typeof window === 'undefined') return EMPTY_RECENTS
+  // Re-parse sólo si localStorage cambió, así getSnapshot() es estable
+  // entre renders y useSyncExternalStore no entra en loop.
+  const raw = localStorage.getItem(KEY)
+  if (raw === cachedRaw) return cachedSnapshot
+  cachedRaw = raw
+  cachedSnapshot = loadRecents()
+  return cachedSnapshot
+}
+
+function subscribeRecents(onChange: () => void): () => void {
+  window.addEventListener('storage', onChange)
+  window.addEventListener('megatools:recents', onChange)
+  return () => {
+    window.removeEventListener('storage', onChange)
+    window.removeEventListener('megatools:recents', onChange)
+  }
+}
+
 export function useRecents(): RecentApp[] {
-  const [list, setList] = useState<RecentApp[]>([])
-  useEffect(() => {
-    setList(loadRecents())
-    const handler = () => setList(loadRecents())
-    window.addEventListener('storage', handler)
-    window.addEventListener('megatools:recents', handler)
-    return () => {
-      window.removeEventListener('storage', handler)
-      window.removeEventListener('megatools:recents', handler)
-    }
-  }, [])
-  return list
+  return useSyncExternalStore(subscribeRecents, getRecentsSnapshot, () => EMPTY_RECENTS)
 }
 
 export function formatRelativeTime(ts: number, now: number = Date.now()): string {
