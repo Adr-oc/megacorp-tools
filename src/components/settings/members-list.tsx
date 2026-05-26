@@ -30,22 +30,37 @@ type Props = {
 export function MembersList({ organizationId, myRole, myUserId }: Props) {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
-
-  const fetchMembers = useCallback(async () => {
-    setLoading(true)
-    const res = await fetch(
-      `/api/auth/organization/list-members?organizationId=${encodeURIComponent(organizationId)}`,
-    )
-    if (res.ok) {
-      const data = await res.json()
-      setMembers(Array.isArray(data) ? data : (data.members ?? []))
-    }
-    setLoading(false)
-  }, [organizationId])
+  const [refetchKey, setRefetchKey] = useState(0)
 
   useEffect(() => {
-    fetchMembers()
-  }, [fetchMembers])
+    let cancelled = false
+    fetch(
+      `/api/auth/organization/list-members?organizationId=${encodeURIComponent(organizationId)}`,
+    )
+      .then(async (res) => {
+        if (cancelled) return
+        if (res.ok) {
+          const data = await res.json()
+          if (!cancelled) setMembers(Array.isArray(data) ? data : (data.members ?? []))
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [organizationId, refetchKey])
+
+  // Refetch manual: bumpear el contador re-dispara el useEffect sin necesidad
+  // de llamar a una función con setState síncrono (que era lo que flaggeaba
+  // react-hooks/set-state-in-effect).
+  const refetch = useCallback(() => {
+    setLoading(true)
+    setRefetchKey((k) => k + 1)
+  }, [])
 
   const canManage = myRole === 'owner' || myRole === 'admin'
 
@@ -60,7 +75,7 @@ export function MembersList({ organizationId, myRole, myUserId }: Props) {
       return
     }
     toast.success('Rol actualizado')
-    fetchMembers()
+    refetch()
   }
 
   async function removeMember(memberId: string) {
@@ -75,7 +90,7 @@ export function MembersList({ organizationId, myRole, myUserId }: Props) {
       return
     }
     toast.success('Miembro removido')
-    fetchMembers()
+    refetch()
   }
 
   return (
@@ -83,7 +98,7 @@ export function MembersList({ organizationId, myRole, myUserId }: Props) {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Miembros</h2>
         {canManage && (
-          <InviteMemberDialog organizationId={organizationId} onInvited={fetchMembers} />
+          <InviteMemberDialog organizationId={organizationId} onInvited={refetch} />
         )}
       </div>
       {loading ? (
