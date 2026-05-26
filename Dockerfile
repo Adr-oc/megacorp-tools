@@ -12,6 +12,17 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Placeholders solo para satisfacer la validación Zod de src/lib/env.ts durante el
+# build (Next analiza las rutas estáticamente). Los valores REALES se inyectan en
+# runtime vía el bloque `environment:` de docker-compose, no se hornean en la imagen.
+# EXCEPCIÓN: NEXT_PUBLIC_* se hornea en el bundle del cliente en build-time, así que
+# debe recibir su valor REAL aquí vía build arg (no sirve inyectarlo en runtime).
+ARG NEXT_PUBLIC_BETTER_AUTH_URL
+ENV DATABASE_URL="postgres://build:build@localhost:5432/build" \
+    BETTER_AUTH_SECRET="build_time_placeholder_secret_min_32_chars_xxxxx" \
+    BETTER_AUTH_URL="http://localhost:3000" \
+    NEXT_PUBLIC_BETTER_AUTH_URL=${NEXT_PUBLIC_BETTER_AUTH_URL} \
+    NODE_ENV=production
 RUN pnpm build
 
 FROM base AS runner

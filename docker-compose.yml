@@ -19,6 +19,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BETTER_AUTH_URL: ${BETTER_AUTH_URL}
     container_name: megatools-app
     restart: unless-stopped
     depends_on:
