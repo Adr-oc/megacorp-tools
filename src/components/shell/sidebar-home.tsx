@@ -1,5 +1,6 @@
 'use client'
 
+import { useSyncExternalStore } from 'react'
 import { FileText, Settings } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useRecents, formatRelativeTime, type RecentApp } from '@/lib/recents/client'
@@ -24,9 +25,26 @@ function metaFor(r: RecentApp): AppMeta | null {
   return null
 }
 
+// `now` cacheado en buckets de 60s para que getSnapshot devuelva un valor estable
+// entre renders (requisito de useSyncExternalStore) pero refresque los labels
+// "hace 5 min" cada minuto.
+function getNowBucketed(): number {
+  const t = Date.now()
+  return t - (t % 60_000)
+}
+
+function subscribeNow(onChange: () => void): () => void {
+  const id = setInterval(onChange, 60_000)
+  return () => clearInterval(id)
+}
+
+function useNow(): number {
+  return useSyncExternalStore(subscribeNow, getNowBucketed, getNowBucketed)
+}
+
 export function SidebarHome() {
   const recents = useRecents()
-  const now = Date.now()
+  const now = useNow()
 
   type Resolved = { r: RecentApp; meta: AppMeta }
   const resolved: Resolved[] = recents
