@@ -7,31 +7,39 @@ import { apps } from '@/lib/apps/registry'
 
 export function usePermissions() {
   const { data: session } = authClient.useSession()
-  const [role, setRole] = useState<AppRole | null>(null)
+  const [rawRole, setRawRole] = useState<AppRole | null>(null)
+
+  const activeOrgId = session?.session.activeOrganizationId
+  const userId = session?.user.id
+  // `role` derivado: sin sesión activa, siempre null, sin importar el último
+  // valor cacheado en rawRole. Esto reemplaza los setRole(null) síncronos
+  // que antes vivían dentro del useEffect.
+  const role: AppRole | null = session && activeOrgId ? rawRole : null
 
   useEffect(() => {
-    if (!session) {
-      setRole(null)
-      return
-    }
-    const activeOrgId = session.session.activeOrganizationId
-    if (!activeOrgId) {
-      setRole(null)
-      return
-    }
+    if (!activeOrgId || !userId) return
+
+    let cancelled = false
     fetch(`/api/auth/organization/list-members?organizationId=${encodeURIComponent(activeOrgId)}`)
       .then(async (res) => {
+        if (cancelled) return
         if (!res.ok) {
-          setRole(null)
+          setRawRole(null)
           return
         }
         const data = await res.json()
         const members = Array.isArray(data) ? data : (data?.members ?? [])
-        const me = members.find?.((m: { userId: string }) => m.userId === session.user.id)
-        setRole(((me?.role ?? 'member') as AppRole) || 'member')
+        const me = members.find?.((m: { userId: string }) => m.userId === userId)
+        if (!cancelled) setRawRole(((me?.role ?? 'member') as AppRole) || 'member')
       })
-      .catch(() => setRole(null))
-  }, [session])
+      .catch(() => {
+        if (!cancelled) setRawRole(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeOrgId, userId])
 
   return {
     role,
