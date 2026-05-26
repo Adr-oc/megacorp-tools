@@ -9,17 +9,20 @@ import { Button } from '@/components/ui/button'
 export function VerifyEmailClient() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
-  const [status, setStatus] = useState<'pending' | 'success' | 'error'>('pending')
+  const [asyncStatus, setAsyncStatus] = useState<'success' | 'error' | null>(null)
+  // `status` derivado: sin token la respuesta es siempre 'error', sin necesidad
+  // de un setState síncrono dentro del effect.
+  const status: 'pending' | 'success' | 'error' = !token ? 'error' : (asyncStatus ?? 'pending')
 
   useEffect(() => {
-    if (!token) {
-      setStatus('error')
-      return
-    }
+    if (!token) return
+
+    let cancelled = false
     fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`)
       .then(async (res) => {
+        if (cancelled) return
         if (!res.ok) {
-          setStatus('error')
+          setAsyncStatus('error')
           return
         }
         const pendingInvitation =
@@ -34,9 +37,15 @@ export function VerifyEmailClient() {
           }).catch(() => {})
           sessionStorage.removeItem('pendingInvitationToken')
         }
-        setStatus('success')
+        if (!cancelled) setAsyncStatus('success')
       })
-      .catch(() => setStatus('error'))
+      .catch(() => {
+        if (!cancelled) setAsyncStatus('error')
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [token])
 
   return (
