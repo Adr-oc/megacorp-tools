@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/lib/auth/server'
+import { ensureActiveOrganization } from '@/lib/auth/active-organization'
 import { db } from '@/lib/db'
 import { appSetting, orgSetting } from '@/lib/db/schema/app'
 import { member } from '@/lib/db/schema/auth'
@@ -27,7 +28,11 @@ type Session = {
 async function getSessionContext(): Promise<Session> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) throw new Error('No autenticado')
-  const orgId = session.session.activeOrganizationId
+  const orgId = await ensureActiveOrganization({
+    sessionId: session.session.id,
+    userId: session.user.id,
+    currentOrganizationId: session.session.activeOrganizationId,
+  })
   if (!orgId) throw new Error('Sin organización activa')
 
   const rows = await db

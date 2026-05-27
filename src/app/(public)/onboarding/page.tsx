@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth/server'
+import { ensureActiveOrganization } from '@/lib/auth/active-organization'
 import { db } from '@/lib/db'
 import { invitation, member, organization, user } from '@/lib/db/schema/auth'
 import { apps } from '@/lib/apps/registry'
@@ -9,7 +10,11 @@ import { OnboardingFlow } from './onboarding-flow'
 
 export default async function OnboardingPage() {
   const session = (await auth.api.getSession({ headers: await headers() }))!
-  const activeOrgId = session.session.activeOrganizationId
+  const activeOrgId = await ensureActiveOrganization({
+    sessionId: session.session.id,
+    userId: session.user.id,
+    currentOrganizationId: session.session.activeOrganizationId,
+  })
 
   const u = session.user
   const accent = coerceAccent((u as { accentColor?: unknown }).accentColor)

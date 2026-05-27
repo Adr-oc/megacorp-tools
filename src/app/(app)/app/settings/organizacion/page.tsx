@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth/server'
+import { ensureActiveOrganization } from '@/lib/auth/active-organization'
 import { db } from '@/lib/db'
 import { member, organization } from '@/lib/db/schema/auth'
 import { OrganizationForm } from '@/components/settings/organization-form'
@@ -12,7 +13,11 @@ export default async function OrganizationPage() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return null
 
-  const activeOrgId = session.session.activeOrganizationId
+  const activeOrgId = await ensureActiveOrganization({
+    sessionId: session.session.id,
+    userId: session.user.id,
+    currentOrganizationId: session.session.activeOrganizationId,
+  })
   if (!activeOrgId) {
     return <p className="text-muted-foreground">No tenés organización activa.</p>
   }

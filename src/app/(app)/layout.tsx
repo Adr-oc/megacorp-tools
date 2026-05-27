@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth/server'
 import { db } from '@/lib/db'
 import { member, organization } from '@/lib/db/schema/auth'
+import { ensureActiveOrganization } from '@/lib/auth/active-organization'
 import { coerceAccent } from '@/lib/accent/presets'
 import { AppSidebar } from '@/components/shell/app-sidebar'
 import { Topbar } from '@/components/shell/topbar'
@@ -23,7 +24,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const accent = coerceAccent((session.user as { accentColor?: unknown }).accentColor)
 
-  const activeOrgId = session.session.activeOrganizationId
+  const activeOrgId = await ensureActiveOrganization({
+    sessionId: session.session.id,
+    userId: session.user.id,
+    currentOrganizationId: session.session.activeOrganizationId,
+  })
   let orgName: string | null = null
   let role: 'owner' | 'admin' | 'member' = 'member'
   const isSuperAdmin = session.user.isSuperAdmin === true

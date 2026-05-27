@@ -6,6 +6,7 @@ import { db } from '@/lib/db'
 import { member } from '@/lib/db/schema/auth'
 import { getApp } from '@/lib/apps/registry'
 import type { AppRole } from '@/lib/apps/types'
+import { ensureActiveOrganization } from '@/lib/auth/active-organization'
 
 export async function requireApp(
   appId: string
@@ -20,7 +21,11 @@ export async function requireApp(
     redirect('/login')
   }
 
-  const activeOrgId = session.session.activeOrganizationId
+  const activeOrgId = await ensureActiveOrganization({
+    sessionId: session.session.id,
+    userId: session.user.id,
+    currentOrganizationId: session.session.activeOrganizationId,
+  })
   if (!activeOrgId) {
     redirect('/app')
   }

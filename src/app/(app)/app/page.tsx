@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth/server'
+import { ensureActiveOrganization } from '@/lib/auth/active-organization'
 import { db } from '@/lib/db'
 import { member } from '@/lib/db/schema/auth'
 import { apps } from '@/lib/apps/registry'
@@ -14,7 +15,11 @@ export default async function AppHomePage() {
   }
 
   let role: AppRole = 'member'
-  const activeOrgId = session.session.activeOrganizationId
+  const activeOrgId = await ensureActiveOrganization({
+    sessionId: session.session.id,
+    userId: session.user.id,
+    currentOrganizationId: session.session.activeOrganizationId,
+  })
   if (activeOrgId) {
     const rows = await db
       .select()
