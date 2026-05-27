@@ -11,7 +11,8 @@ import {
   DATA_KEY,
   TEMPLATE_KEY,
   dataSchema,
-  templateSchema,
+  migrateTemplateValue,
+  templateSetSchema,
   type SignatureData,
   type SignatureTemplate,
 } from './schema'
@@ -40,16 +41,18 @@ async function getSessionContext(): Promise<Session> {
   return { userId: session.user.id, orgId, role }
 }
 
-export async function getTemplate(): Promise<SignatureTemplate | null> {
+// Devuelve el array de plantillas de la organización, migrando el formato viejo
+// (una sola plantilla bajo TEMPLATE_KEY sin array) a la forma nueva.
+export async function getTemplates(): Promise<SignatureTemplate[]> {
   const { orgId } = await getSessionContext()
   const rows = await db
     .select({ value: orgSetting.value })
     .from(orgSetting)
     .where(and(eq(orgSetting.organizationId, orgId), eq(orgSetting.key, TEMPLATE_KEY)))
     .limit(1)
-  if (!rows[0]) return null
-  const parsed = templateSchema.safeParse(rows[0].value)
-  return parsed.success ? parsed.data : null
+  if (!rows[0]) return []
+  const migrated = migrateTemplateValue(rows[0].value)
+  return migrated ? migrated.templates : []
 }
 
 export async function getUserData(): Promise<SignatureData> {
@@ -64,16 +67,16 @@ export async function getUserData(): Promise<SignatureData> {
   return parsed.success ? parsed.data : { values: {} }
 }
 
-export async function saveTemplate(
+export async function saveTemplates(
   input: unknown
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const ctx = await getSessionContext()
-  // SEGURIDAD: solo admin/owner pueden guardar la plantilla de la org.
+  // SEGURIDAD: solo admin/owner pueden guardar las plantillas de la org.
   if (ctx.role !== 'admin' && ctx.role !== 'owner') {
-    return { ok: false, error: 'No tenés permiso para definir la plantilla' }
+    return { ok: false, error: 'No tenés permiso para definir las plantillas' }
   }
 
-  const parsed = templateSchema.safeParse(input)
+  const parsed = templateSetSchema.safeParse(input)
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }

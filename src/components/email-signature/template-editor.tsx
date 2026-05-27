@@ -1,8 +1,8 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { toast } from 'sonner'
-import { Trash2, ImagePlus, Save } from 'lucide-react'
+import { Trash2, ImagePlus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +14,6 @@ import {
   type SignatureTemplate,
   type TemplateImage,
 } from '@/lib/email-signature/schema'
-import { saveTemplate } from '@/lib/email-signature/actions'
 
 type Props = {
   template: SignatureTemplate
@@ -24,7 +23,6 @@ type Props = {
 const MAX_IMG_BYTES = 1_400_000
 
 export function TemplateEditor({ template, onChange }: Props) {
-  const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   function patch(next: Partial<SignatureTemplate>) {
@@ -72,21 +70,19 @@ export function TemplateEditor({ template, onChange }: Props) {
     patch({ images: template.images.filter((i) => i.id !== id) })
   }
 
-  async function onSave() {
-    setSaving(true)
-    try {
-      const res = await saveTemplate(template)
-      if (res.ok) toast.success('Plantilla guardada para toda la organización')
-      else toast.error(res.error)
-    } catch {
-      toast.error('Error al guardar la plantilla')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <div className="space-y-5">
+      <div className="grid gap-1.5">
+        <Label htmlFor="tpl-name">Nombre de la plantilla</Label>
+        <Input
+          id="tpl-name"
+          value={template.name}
+          maxLength={60}
+          placeholder="Ej.: Formal, Comercial…"
+          onChange={(e) => patch({ name: e.target.value })}
+        />
+      </div>
+
       <div className="grid gap-1.5">
         <Label htmlFor="tpl-html">HTML de la plantilla</Label>
         <p className="text-xs text-muted-foreground">
@@ -193,11 +189,6 @@ export function TemplateEditor({ template, onChange }: Props) {
           })}
         </div>
       </div>
-
-      <Button onClick={onSave} disabled={saving}>
-        <Save className="size-4" />
-        {saving ? 'Guardando…' : 'Guardar plantilla'}
-      </Button>
     </div>
   )
 }

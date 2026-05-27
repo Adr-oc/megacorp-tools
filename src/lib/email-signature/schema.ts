@@ -39,9 +39,15 @@ export const templateImageSchema = z.object({
 
 export type TemplateImage = z.infer<typeof templateImageSchema>
 
+// Máximo de plantillas por organización.
+export const MAX_TEMPLATES = 6
+
+// Una plantilla individual de firma definida por el admin.
 // Valor fijo por defecto para un campo (si no es editable por el usuario,
 // se usa este valor; si es editable, sirve como placeholder/valor inicial).
-export const templateSchema = z.object({
+export const signatureTemplateSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1, 'El nombre es requerido').max(60),
   html: z.string().min(1, 'El HTML de la plantilla es requerido').max(100_000),
   images: z.array(templateImageSchema).max(8).default([]),
   // Campos que el usuario puede editar.
@@ -50,11 +56,28 @@ export const templateSchema = z.object({
   fixedValues: z.record(z.string(), z.string()).default({}),
 })
 
-export type SignatureTemplate = z.infer<typeof templateSchema>
+export type SignatureTemplate = z.infer<typeof signatureTemplateSchema>
 
-// Datos que completa el usuario.
+// Conjunto de plantillas de la organización (formato nuevo en orgSetting).
+export const templateSetSchema = z.object({
+  templates: z.array(signatureTemplateSchema).max(MAX_TEMPLATES).default([]),
+})
+
+export type TemplateSet = z.infer<typeof templateSetSchema>
+
+// Formato VIEJO: una sola plantilla guardada directamente bajo TEMPLATE_KEY,
+// sin id, sin name y sin array. Se usa solo para migrar al leer.
+export const legacyTemplateSchema = z.object({
+  html: z.string().min(1).max(100_000),
+  images: z.array(templateImageSchema).max(8).default([]),
+  editableFields: z.array(z.enum(SIGNATURE_FIELDS)).default([]),
+  fixedValues: z.record(z.string(), z.string()).default({}),
+})
+
+// Datos que completa el usuario (compartidos entre plantillas) + selección.
 export const dataSchema = z.object({
   values: z.record(z.string(), z.string()).default({}),
+  selectedTemplateId: z.string().optional(),
 })
 
 export type SignatureData = z.infer<typeof dataSchema>
@@ -71,3 +94,71 @@ export const DEFAULT_TEMPLATE_HTML = `<table cellpadding="0" cellspacing="0" sty
     </td>
   </tr>
 </table>`
+
+const DEFAULT_COMPACT_HTML = `<table cellpadding="0" cellspacing="0" style="font-family: Arial, sans-serif; color: #1f2937;">
+  <tr>
+    <td>
+      <div style="font-size: 15px; font-weight: bold; color: #111827;">{{nombre}}</div>
+      <div style="font-size: 12px; color: #6b7280;">{{puesto}} · {{empresa}}</div>
+      <div style="font-size: 12px;">{{correo}} &nbsp;|&nbsp; {{telefono}}</div>
+    </td>
+  </tr>
+</table>`
+
+// Plantillas de ejemplo por defecto (cuando la org aún no definió ninguna).
+export function defaultTemplates(): SignatureTemplate[] {
+  const editableFields: SignatureField[] = [
+    'nombre',
+    'puesto',
+    'descripcion',
+    'correo',
+    'telefono',
+  ]
+  return [
+    {
+      id: 'tpl-formal',
+      name: 'Formal',
+      html: DEFAULT_TEMPLATE_HTML,
+      images: [],
+      editableFields,
+      fixedValues: {},
+    },
+    {
+      id: 'tpl-compacta',
+      name: 'Compacta',
+      html: DEFAULT_COMPACT_HTML,
+      images: [],
+      editableFields: ['nombre', 'puesto', 'correo', 'telefono'],
+      fixedValues: {},
+    },
+  ]
+}
+
+// Genera un id único corto para una plantilla nueva.
+export function newTemplateId(): string {
+  return 'tpl-' + crypto.randomUUID().slice(0, 8)
+}
+
+// Migra un valor crudo de orgSetting (que puede estar en formato viejo o nuevo)
+// a la forma nueva { templates: [...] }. Devuelve null si no hay nada válido.
+export function migrateTemplateValue(value: unknown): TemplateSet | null {
+  // Formato nuevo: { templates: [...] }
+  const asSet = templateSetSchema.safeParse(value)
+  if (asSet.success) return asSet.data
+
+  // Formato viejo: una sola plantilla sin array.
+  const legacy = legacyTemplateSchema.safeParse(value)
+  if (legacy.success) {
+    return {
+      templates: [
+        {
+          id: newTemplateId(),
+          name: 'Plantilla 1',
+          ...legacy.data,
+        },
+      ],
+    }
+  }
+
+  return null
+}
