@@ -21,6 +21,7 @@ export const user = pgTable("user", {
     .notNull(),
   accentColor: text("accent_color").notNull().default("mustard"),
   onboardedAt: timestamp("onboarded_at"),
+  isSuperAdmin: boolean("is_super_admin").default(false).notNull(),
 });
 
 export const session = pgTable(
@@ -92,6 +93,9 @@ export const organization = pgTable(
     logo: text("logo"),
     createdAt: timestamp("created_at").notNull(),
     metadata: text("metadata"),
+    // null = organización madre/raíz; afiliadas apuntan a su madre.
+    // Self-reference con onDelete: set null (no borra la madre en cascada).
+    parentOrganizationId: text("parent_organization_id"),
   },
   (table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
 );

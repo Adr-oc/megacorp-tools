@@ -28,6 +28,12 @@ export const auth = betterAuth({
         required: false,
         input: false,
       },
+      isSuperAdmin: {
+        type: 'boolean',
+        defaultValue: false,
+        required: false,
+        input: false,
+      },
     },
   },
   emailAndPassword: {
@@ -46,7 +52,7 @@ export const auth = betterAuth({
   plugins: [
     organization({
       allowUserToCreateOrganization: false,
-      organizationLimit: 1,
+      organizationLimit: 50,
       invitationExpiresIn: 60 * 60 * 24 * 7,
       sendInvitationEmail: async ({ email, invitation, organization }) => {
         const url = `${env.BETTER_AUTH_URL}/accept-invitation?token=${invitation.id}`
