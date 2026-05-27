@@ -3,18 +3,26 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
+import { apps } from '@/lib/apps/registry'
 
 type Crumb = { label: string; href: string | null }
 
 const STATIC_LABELS: Record<string, string> = {
   '/app': 'Apps',
-  '/app/tools/pdf-workbench': 'PDF Workbench',
   '/app/settings': 'Configuración',
   '/app/settings/perfil': 'Mi perfil',
   '/app/settings/apariencia': 'Apariencia',
   '/app/settings/organizacion': 'Organización',
   '/app/settings/notificaciones': 'Notificaciones',
   '/app/settings/audit': 'Audit log',
+}
+
+// Nombre de tool desde el registry (single source of truth).
+function toolLabel(pathname: string): string {
+  const app = apps
+    .filter((a) => a.href.startsWith('/app/tools/'))
+    .find((a) => pathname === a.href || pathname.startsWith(`${a.href}/`))
+  return app?.name ?? 'Aplicación'
 }
 
 function buildCrumbs(pathname: string, orgName: string | null): Crumb[] {
@@ -26,8 +34,7 @@ function buildCrumbs(pathname: string, orgName: string | null): Crumb[] {
   }
   if (pathname.startsWith('/app/tools/')) {
     crumbs.push({ label: 'Apps', href: '/app' })
-    const label = STATIC_LABELS[pathname] ?? 'Aplicación'
-    crumbs.push({ label, href: null })
+    crumbs.push({ label: toolLabel(pathname), href: null })
     return crumbs
   }
   if (pathname.startsWith('/app/settings')) {

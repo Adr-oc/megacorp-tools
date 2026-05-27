@@ -7,7 +7,6 @@ import { useTheme } from 'next-themes'
 import { Command } from 'cmdk'
 import {
   Building2,
-  FileText,
   LogOut,
   Moon,
   Palette,
@@ -18,6 +17,7 @@ import {
 } from 'lucide-react'
 import { authClient } from '@/lib/auth/client'
 import { useIsMounted } from '@/hooks/use-is-mounted'
+import { apps } from '@/lib/apps/registry'
 import { cn } from '@/lib/utils'
 
 type Item = {
@@ -67,9 +67,19 @@ export function CommandPalette() {
     router.refresh()
   }
 
+  const toolItems: Item[] = apps
+    .filter((a) => a.status === 'available' && a.href.startsWith('/app/tools/'))
+    .map((a) => ({
+      id: `nav-${a.id}`,
+      label: a.name,
+      icon: a.icon,
+      group: 'Navegación' as const,
+      onSelect: () => go(a.href),
+    }))
+
   const items: Item[] = [
     { id: 'nav-apps', label: 'Apps', icon: Settings, group: 'Navegación', onSelect: () => go('/app') },
-    { id: 'nav-pdf', label: 'PDF Workbench', icon: FileText, group: 'Navegación', onSelect: () => go('/app/tools/pdf-workbench') },
+    ...toolItems,
     { id: 'nav-perfil', label: 'Mi perfil', icon: User, group: 'Navegación', onSelect: () => go('/app/settings/perfil') },
     { id: 'nav-apariencia', label: 'Apariencia', icon: Palette, group: 'Navegación', onSelect: () => go('/app/settings/apariencia') },
     { id: 'nav-org', label: 'Organización', icon: Building2, group: 'Navegación', onSelect: () => go('/app/settings/organizacion') },

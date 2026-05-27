@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { MegacorpLogo } from '@/components/brand/logo'
+import { apps } from '@/lib/apps/registry'
+import type { AppDefinition } from '@/lib/apps/types'
 import { SidebarHome } from './sidebar-home'
 import { SidebarApp } from './sidebar-app'
 import { SidebarSettings } from './sidebar-settings'
@@ -16,9 +18,12 @@ function variantFor(pathname: string): Variant {
   return 'home'
 }
 
-function appLabelFor(pathname: string): string {
-  if (pathname.startsWith('/app/tools/pdf-workbench')) return 'PDF Workbench'
-  return 'Aplicación'
+// Resuelve la app activa desde el registry según la URL (single source of truth).
+// Coincide la entrada cuyo href es prefijo del pathname actual.
+function appFor(pathname: string): AppDefinition | undefined {
+  return apps
+    .filter((a) => a.href.startsWith('/app/tools/'))
+    .find((a) => pathname === a.href || pathname.startsWith(`${a.href}/`))
 }
 
 type Props = {
@@ -50,7 +55,7 @@ export function AppSidebar({ user, orgName, role }: Props) {
 
       <div className="flex-1 overflow-y-auto p-3">
         {variant === 'home' && <SidebarHome />}
-        {variant === 'app' && <SidebarApp appLabel={appLabelFor(pathname)} />}
+        {variant === 'app' && <SidebarApp app={appFor(pathname)} />}
         {variant === 'settings' && <SidebarSettings role={role} />}
       </div>
 
