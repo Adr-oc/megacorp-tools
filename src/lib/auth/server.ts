@@ -1,10 +1,11 @@
+import { randomUUID } from 'node:crypto'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { createAuthMiddleware } from 'better-auth/api'
 import { magicLink, organization } from 'better-auth/plugins'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { member } from '@/lib/db/schema/auth'
+import { invitation, member } from '@/lib/db/schema/auth'
 import { env } from '@/lib/env'
 import { logAudit } from '@/lib/audit/log'
 import { sendEmail, verificationEmail, invitationEmail, magicLinkEmail } from '@/lib/email/send'
@@ -47,6 +48,42 @@ export const auth = betterAuth({
     sendVerificationEmail: async ({ user, url }) => {
       const tpl = verificationEmail(url)
       await sendEmail({ to: user.email, ...tpl })
+    },
+    afterEmailVerification: async (verifiedUser) => {
+      const email = verifiedUser.email.toLowerCase()
+      const [pendingInvitation] = await db
+        .select()
+        .from(invitation)
+        .where(and(eq(invitation.email, email), eq(invitation.status, 'pending')))
+        .limit(1)
+
+      if (!pendingInvitation) return
+
+      const [existingMember] = await db
+        .select({ id: member.id })
+        .from(member)
+        .where(
+          and(
+            eq(member.userId, verifiedUser.id),
+            eq(member.organizationId, pendingInvitation.organizationId)
+          )
+        )
+        .limit(1)
+
+      if (!existingMember) {
+        await db.insert(member).values({
+          id: randomUUID(),
+          userId: verifiedUser.id,
+          organizationId: pendingInvitation.organizationId,
+          role: pendingInvitation.role ?? 'member',
+          createdAt: new Date(),
+        })
+      }
+
+      await db
+        .update(invitation)
+        .set({ status: 'accepted' })
+        .where(eq(invitation.id, pendingInvitation.id))
     },
   },
   plugins: [

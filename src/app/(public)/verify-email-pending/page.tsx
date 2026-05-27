@@ -4,17 +4,25 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useSession } from '@/lib/auth/client'
 
 export default function VerifyEmailPendingPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const { data: session } = useSession()
 
   async function resend() {
+    const email = session?.user?.email
+    if (!email) {
+      toast.error('No se pudo detectar tu sesión. Iniciá sesión de nuevo.')
+      return
+    }
+
     setIsLoading(true)
     try {
       const res = await fetch('/api/auth/send-verification-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ callbackURL: '/verify-email' }),
+        body: JSON.stringify({ email, callbackURL: '/verify-email' }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
