@@ -29,7 +29,10 @@ export default async function AppHomePage() {
     role = (rows[0]?.role ?? 'member') as AppRole
   }
 
-  const visibleApps = apps.filter((a) => a.requiredRoles.includes(role))
+  const isSuperAdmin = session.user.isSuperAdmin === true
+  const visibleApps = apps.filter(
+    (a) => a.requiredRoles.includes(role) || (isSuperAdmin && a.requiredRoles.includes('super-admin')),
+  )
 
   return (
     <section>

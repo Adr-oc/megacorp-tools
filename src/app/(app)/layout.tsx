@@ -26,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const activeOrgId = session.session.activeOrganizationId
   let orgName: string | null = null
   let role: 'owner' | 'admin' | 'member' = 'member'
+  const isSuperAdmin = session.user.isSuperAdmin === true
 
   if (activeOrgId) {
     const [org] = await db
@@ -45,10 +46,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div data-accent={accent} data-accent-root className="h-screen flex">
       <div className="hidden lg:block h-full">
-        <AppSidebar user={session.user} orgName={orgName} role={role} />
+        <AppSidebar user={session.user} orgName={orgName} role={role} isSuperAdmin={isSuperAdmin} />
       </div>
       <div className="flex-1 flex flex-col min-w-0">
-        <Topbar orgName={orgName} user={session.user} role={role} />
+        <Topbar orgName={orgName} user={session.user} role={role} isSuperAdmin={isSuperAdmin} />
         <main className="flex-1 overflow-y-auto">
           <div className="container mx-auto px-4 py-8 max-w-7xl">{children}</div>
         </main>

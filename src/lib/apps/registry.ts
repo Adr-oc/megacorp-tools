@@ -7,6 +7,7 @@ import {
   Signature,
   Calculator,
   MailCheck,
+  ShieldCheck,
 } from 'lucide-react'
 import type { AppDefinition, AppRole } from './types'
 
@@ -72,6 +73,15 @@ export const apps: AppDefinition[] = [
     icon: MailCheck,
     href: '/app/tools/email-signature',
     requiredRoles: ['member', 'admin', 'owner'],
+    status: 'available',
+  },
+  {
+    id: 'admin',
+    name: 'Administración',
+    description: 'Panel Super Admin: organizaciones madre/afiliadas, usuarios, membresías y permisos globales.',
+    icon: ShieldCheck,
+    href: '/app/admin',
+    requiredRoles: ['super-admin'],
     status: 'available',
   },
   {

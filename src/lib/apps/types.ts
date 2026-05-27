@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 
-export type AppRole = 'member' | 'admin' | 'owner'
+export type AppRole = 'member' | 'admin' | 'owner' | 'super-admin'
 
 export type AppStatus = 'available' | 'coming-soon' | 'disabled'
 

@@ -42,9 +42,10 @@ function useNow(): number {
   return useSyncExternalStore(subscribeNow, getNowBucketed, getNowBucketed)
 }
 
-export function SidebarHome() {
+export function SidebarHome({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
   const recents = useRecents()
   const now = useNow()
+  const adminApp = apps.find((a) => a.id === 'admin')
 
   type Resolved = { r: RecentApp; meta: AppMeta }
   const resolved: Resolved[] = recents
@@ -57,6 +58,12 @@ export function SidebarHome() {
 
   return (
     <div className="space-y-5">
+      {isSuperAdmin && adminApp && (
+        <SidebarSection label="Admin">
+          <SidebarItem href={adminApp.href} label={adminApp.name} icon={adminApp.icon} />
+        </SidebarSection>
+      )}
+
       {resolved.length > 0 ? (
         <SidebarSection label="Reciente">
           {resolved.map(({ r, meta }) => (

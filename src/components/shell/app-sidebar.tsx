@@ -30,9 +30,10 @@ type Props = {
   user: { email: string; name?: string | null }
   orgName: string | null
   role: 'owner' | 'admin' | 'member'
+  isSuperAdmin?: boolean
 }
 
-export function AppSidebar({ user, orgName, role }: Props) {
+export function AppSidebar({ user, orgName, role, isSuperAdmin = false }: Props) {
   const pathname = usePathname() ?? '/app'
   const variant = variantFor(pathname)
 
@@ -54,7 +55,7 @@ export function AppSidebar({ user, orgName, role }: Props) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
-        {variant === 'home' && <SidebarHome />}
+        {variant === 'home' && <SidebarHome isSuperAdmin={isSuperAdmin} />}
         {variant === 'app' && <SidebarApp app={appFor(pathname)} />}
         {variant === 'settings' && <SidebarSettings role={role} />}
       </div>

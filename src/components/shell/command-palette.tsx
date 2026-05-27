@@ -28,7 +28,7 @@ type Item = {
   group: 'Navegación' | 'Acciones'
 }
 
-export function CommandPalette() {
+export function CommandPalette({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
   const [open, setOpen] = useState(false)
   const mounted = useIsMounted()
   const router = useRouter()
@@ -77,8 +77,21 @@ export function CommandPalette() {
       onSelect: () => go(a.href),
     }))
 
+  const adminItems: Item[] = isSuperAdmin
+    ? apps
+        .filter((a) => a.status === 'available' && a.requiredRoles.includes('super-admin'))
+        .map((a) => ({
+          id: `nav-${a.id}`,
+          label: a.name,
+          icon: a.icon,
+          group: 'Navegación' as const,
+          onSelect: () => go(a.href),
+        }))
+    : []
+
   const items: Item[] = [
     { id: 'nav-apps', label: 'Apps', icon: Settings, group: 'Navegación', onSelect: () => go('/app') },
+    ...adminItems,
     ...toolItems,
     { id: 'nav-perfil', label: 'Mi perfil', icon: User, group: 'Navegación', onSelect: () => go('/app/settings/perfil') },
     { id: 'nav-apariencia', label: 'Apariencia', icon: Palette, group: 'Navegación', onSelect: () => go('/app/settings/apariencia') },

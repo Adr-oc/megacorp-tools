@@ -11,9 +11,10 @@ type Props = {
   orgName: string | null
   user: { email: string; name?: string | null }
   role: 'owner' | 'admin' | 'member'
+  isSuperAdmin?: boolean
 }
 
-export function MobileNav({ orgName, user, role }: Props) {
+export function MobileNav({ orgName, user, role, isSuperAdmin = false }: Props) {
   const pathname = usePathname()
   // Guardamos el pathname en el que se abrió el sheet; si el pathname actual
   // cambia (navegación), open queda automáticamente en false. Reemplaza el
@@ -36,7 +37,7 @@ export function MobileNav({ orgName, user, role }: Props) {
       />
       <SheetContent side="left" className="p-0 w-72" showCloseButton={false}>
         <SheetTitle className="sr-only">Menú</SheetTitle>
-        <AppSidebar orgName={orgName} user={user} role={role} />
+        <AppSidebar orgName={orgName} user={user} role={role} isSuperAdmin={isSuperAdmin} />
       </SheetContent>
     </Sheet>
   )
