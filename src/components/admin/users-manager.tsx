@@ -5,7 +5,7 @@ import { Plus, Shield, ShieldCheck, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   addUserToOrg,
-  createUser,
+  inviteUser,
   listOrganizationsFlat,
   listUsers,
   removeUserFromOrg,
@@ -41,6 +41,12 @@ const ROLE_LABEL: Record<string, string> = {
   admin: 'Administrador',
   member: 'Miembro',
 }
+
+const ROLE_ITEMS = [
+  { value: 'member', label: ROLE_LABEL.member },
+  { value: 'admin', label: ROLE_LABEL.admin },
+  { value: 'owner', label: ROLE_LABEL.owner },
+]
 
 export function UsersManager() {
   const [users, setUsers] = useState<UserRow[]>([])
@@ -82,7 +88,7 @@ export function UsersManager() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Usuarios</h2>
         <Button size="sm" onClick={() => setCreating(true)}>
-          <UserPlus className="h-4 w-4" /> Nuevo usuario
+          <UserPlus className="h-4 w-4" /> Enviar invitación
         </Button>
       </div>
 
@@ -135,7 +141,7 @@ export function UsersManager() {
       )}
 
       {creating && (
-        <CreateUserDialog
+        <InviteUserDialog
           orgs={orgs}
           onClose={() => setCreating(false)}
           onSaved={() => {
@@ -168,7 +174,7 @@ export function UsersManager() {
   )
 }
 
-function CreateUserDialog({
+function InviteUserDialog({
   orgs,
   onClose,
   onSaved,
@@ -178,21 +184,20 @@ function CreateUserDialog({
   onSaved: () => void
 }) {
   const [email, setEmail] = useState('')
-  const [name, setName] = useState('')
-  const [password, setPassword] = useState('')
   const [organizationId, setOrganizationId] = useState('')
   const [role, setRole] = useState<Role>('member')
   const [saving, setSaving] = useState(false)
+  const orgItems = orgs.map((o) => ({ value: o.id, label: o.name }))
 
   async function handleSubmit() {
     setSaving(true)
-    const res = await createUser({ email, name, password, organizationId, role })
+    const res = await inviteUser({ email, organizationId, role })
     setSaving(false)
     if (!res.ok) {
       toast.error(res.error)
       return
     }
-    toast.success('Usuario creado')
+    toast.success('Invitación enviada')
     onSaved()
   }
 
@@ -200,16 +205,12 @@ function CreateUserDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nuevo usuario</DialogTitle>
+          <DialogTitle>Enviar invitación</DialogTitle>
           <DialogDescription>
-            Se crea con email verificado y una contraseña temporal que deberá cambiar.
+            El usuario recibirá un enlace para crear su cuenta y definir su contraseña.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Nombre</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
           <div className="space-y-2">
             <Label>Email</Label>
             <Input
@@ -220,17 +221,12 @@ function CreateUserDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>Contraseña temporal</Label>
-            <Input
-              type="text"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="mínimo 8 caracteres"
-            />
-          </div>
-          <div className="space-y-2">
             <Label>Organización</Label>
-            <Select value={organizationId} onValueChange={(v) => setOrganizationId(v ?? '')}>
+            <Select
+              items={orgItems}
+              value={organizationId}
+              onValueChange={(v) => setOrganizationId(v ?? '')}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Elegí una organización" />
               </SelectTrigger>
@@ -245,7 +241,11 @@ function CreateUserDialog({
           </div>
           <div className="space-y-2">
             <Label>Rol</Label>
-            <Select value={role} onValueChange={(v) => setRole((v ?? 'member') as Role)}>
+            <Select
+              items={ROLE_ITEMS}
+              value={role}
+              onValueChange={(v) => setRole((v ?? 'member') as Role)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -263,9 +263,9 @@ function CreateUserDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={saving || !email.trim() || !name.trim() || !password || !organizationId}
+            disabled={saving || !email.trim() || !organizationId}
           >
-            {saving ? 'Creando…' : 'Crear usuario'}
+            {saving ? 'Enviando…' : 'Enviar invitación'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -292,6 +292,7 @@ function ManageMembershipsDialog({
 
   const memberOrgIds = new Set(memberships.map((m) => m.organizationId))
   const addable = orgs.filter((o) => !memberOrgIds.has(o.id))
+  const addableOrgItems = addable.map((o) => ({ value: o.id, label: o.name }))
 
   async function changeRole(organizationId: string, newRole: Role) {
     setBusy(true)
@@ -360,6 +361,7 @@ function ManageMembershipsDialog({
                   <span className="text-sm font-medium truncate">{m.organizationName}</span>
                   <div className="flex items-center gap-1 shrink-0">
                     <Select
+                      items={ROLE_ITEMS}
                       value={m.role}
                       onValueChange={(v) => changeRole(m.organizationId, (v ?? 'member') as Role)}
                     >
@@ -390,7 +392,11 @@ function ManageMembershipsDialog({
             <div className="border-t pt-3 space-y-2">
               <Label>Agregar a otra organización</Label>
               <div className="flex items-center gap-2">
-                <Select value={addOrgId} onValueChange={(v) => setAddOrgId(v ?? '')}>
+                <Select
+                  items={addableOrgItems}
+                  value={addOrgId}
+                  onValueChange={(v) => setAddOrgId(v ?? '')}
+                >
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Organización" />
                   </SelectTrigger>
@@ -402,7 +408,11 @@ function ManageMembershipsDialog({
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={addRole} onValueChange={(v) => setAddRole((v ?? 'member') as Role)}>
+                <Select
+                  items={ROLE_ITEMS}
+                  value={addRole}
+                  onValueChange={(v) => setAddRole((v ?? 'member') as Role)}
+                >
                   <SelectTrigger className="w-36">
                     <SelectValue />
                   </SelectTrigger>

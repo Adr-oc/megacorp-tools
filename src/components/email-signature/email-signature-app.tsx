@@ -64,6 +64,11 @@ export function EmailSignatureApp({
 
   const hasTemplates = templates.length > 0
 
+  const templateItems = useMemo(
+    () => templates.map((t) => ({ value: t.id, label: t.name || 'Sin nombre' })),
+    [templates]
+  )
+
   // Plantilla elegida por el usuario (validada contra las existentes).
   const userTemplate = useMemo(
     () =>
@@ -155,6 +160,7 @@ export function EmailSignatureApp({
                     <div className="grid gap-1.5">
                       <Label>Elegí tu plantilla</Label>
                       <Select
+                        items={templateItems}
                         value={userTemplate.id}
                         onValueChange={(v) => setUserSelectedId(v)}
                       >

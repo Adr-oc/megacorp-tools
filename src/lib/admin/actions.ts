@@ -3,9 +3,10 @@
 import { randomUUID } from 'node:crypto'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { auth } from '@/lib/auth/server'
 import { db } from '@/lib/db'
 import { invitation, member, organization, user } from '@/lib/db/schema/auth'
+import { env } from '@/lib/env'
+import { invitationEmail, sendEmail } from '@/lib/email/send'
 import { requireSuperAdmin } from '@/lib/permissions/require-super-admin'
 
 // ---------------------------------------------------------------------------
@@ -323,30 +324,29 @@ export async function listUsers(): Promise<UserRow[]> {
     .sort((a, b) => a.email.localeCompare(b.email))
 }
 
-const createUserSchema = z.object({
+const inviteUserSchema = z.object({
   email: z.email('Email inválido'),
-  name: z.string().trim().min(1, 'El nombre es obligatorio').max(120),
-  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
   organizationId: z.string().trim().min(1, 'Elegí una organización'),
   role: z.enum(ROLES),
 })
 
 /**
- * Crea un usuario y lo asigna a una org con un rol. Usa auth.api.signUpEmail
- * (patrón add-owner) + marca emailVerified:true + inserta en member.
+ * Invita a un usuario a una org. No crea cuenta ni contraseña temporal: el
+ * usuario define nombre/password al aceptar la invitación.
  */
-export async function createUser(
-  input: z.infer<typeof createUserSchema>,
+export async function inviteUser(
+  input: z.infer<typeof inviteUserSchema>,
 ): Promise<ActionResult> {
-  await requireSuperAdmin()
-  const parsed = createUserSchema.safeParse(input)
+  const { userId: inviterId } = await requireSuperAdmin()
+  const parsed = inviteUserSchema.safeParse(input)
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
-  const { email, name, password, organizationId, role } = parsed.data
+  const { organizationId, role } = parsed.data
+  const email = parsed.data.email.trim().toLowerCase()
 
   const [org] = await db
-    .select({ id: organization.id })
+    .select({ id: organization.id, name: organization.name })
     .from(organization)
     .where(eq(organization.id, organizationId))
     .limit(1)
@@ -355,35 +355,43 @@ export async function createUser(
   const [existing] = await db
     .select({ id: user.id })
     .from(user)
-    .where(eq(user.email, email))
+    .where(sql`lower(${user.email}) = ${email}`)
     .limit(1)
-  if (existing) return { ok: false, error: 'Ya existe un usuario con ese email' }
 
-  let userId: string | undefined
-  try {
-    const r = await auth.api.signUpEmail({ body: { email, password, name } })
-    if (r?.user?.id) userId = r.user.id
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('EMAIL_NOT_VERIFIED') && !msg.includes('email_not_verified')) {
-      return { ok: false, error: 'No se pudo crear el usuario' }
-    }
-  }
-  if (!userId) {
-    const [c] = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1)
-    if (!c) return { ok: false, error: 'No se pudo obtener el id del usuario creado' }
-    userId = c.id
+  if (existing) {
+    const [existingMember] = await db
+      .select({ id: member.id })
+      .from(member)
+      .where(and(eq(member.userId, existing.id), eq(member.organizationId, organizationId)))
+      .limit(1)
+    if (existingMember) return { ok: false, error: 'Ese usuario ya pertenece a la organización' }
   }
 
-  await db.update(user).set({ emailVerified: true }).where(eq(user.id, userId))
+  await db
+    .update(invitation)
+    .set({ status: 'canceled' })
+    .where(
+      and(
+        eq(invitation.organizationId, organizationId),
+        eq(invitation.email, email),
+        eq(invitation.status, 'pending')
+      )
+    )
 
-  await db.insert(member).values({
-    id: randomUUID(),
-    userId,
+  const inviteId = randomUUID()
+  await db.insert(invitation).values({
+    id: inviteId,
     organizationId,
+    email,
     role,
-    createdAt: new Date(),
+    status: 'pending',
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    inviterId,
   })
+
+  const url = `${env.BETTER_AUTH_URL}/accept-invitation?token=${inviteId}`
+  const tpl = invitationEmail(org.name, url)
+  await sendEmail({ to: email, ...tpl })
   return { ok: true }
 }
 

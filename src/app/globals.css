@@ -186,7 +186,14 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      linear-gradient(to bottom, color-mix(in oklab, var(--background) 92%, white 8%), var(--background)),
+      radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--foreground) 10%, transparent) 1px, transparent 0);
+    background-size: auto, 24px 24px;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--brand-accent) 45%, transparent);
   }
   html {
     @apply font-sans;
