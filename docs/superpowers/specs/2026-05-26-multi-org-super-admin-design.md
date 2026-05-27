@@ -77,15 +77,55 @@ Ruta nueva, ej. `/app/admin` (gateada por `isSuperAdmin`):
   usuario deben ser por-org o globales. Para firmas de correo: probablemente por-org
   (distinta firma según la empresa). DECISIÓN PENDIENTE.
 
-## 5. Decisiones pendientes (necesito de Adroc)
+## 5. Decisiones (RESUELTAS por Adroc 2026-05-26)
 
-1. **¿Super Admin = flag simple (A) o plugin admin con impersonación (B)?**
-2. **¿Quién es Super Admin inicialmente?** (¿it@erpconnectai.com? ¿admin@adrocgt.com?)
-3. **¿Los datos de usuario (firma, prefs) son globales al usuario o por-organización?**
-   (Importa si una persona trabaja en 2 afiliadas y quiere firma distinta en cada una.)
-4. **¿Jerarquía entre orgs?** ¿MEGACORP es "org madre" de las afiliadas, o todas son
-   planas e independientes? (Afecta si hay reportería consolidada del grupo.)
-5. **¿Creación de orgs solo por Super Admin, o también self-service con aprobación?**
+1. **Super Admin = flag simple (A).** Campo `user.isSuperAdmin`.
+2. **Super Admin inicial: `it@erpconnectai.com`.**
+3. **Datos de usuario = POR ORGANIZACIÓN.** Las prefs/firma de un usuario son por org
+   activa, no globales. Implica: mover `appSetting` de clave `(userId, key)` a
+   `(userId, organizationId, key)` — o usar orgSetting+userId. Ver §8.
+4. **Jerarquía: orgs MADRE → afiliadas.** MEGACORP es madre de sus afiliadas (EGAMSA,
+   301, assukargo, etc.). El patrón se repite: el Super Admin puede crear OTRAS orgs
+   madre, cada una con sus propias afiliadas. Es un árbol de 2 niveles
+   (madre → hijas). Ver §9.
+5. **Creación de orgs: solo Super Admin** (allowUserToCreateOrganization sigue false).
+
+## 8. Datos por organización (decisión #3)
+
+Hoy `appSetting (userId, key, value)` con unique en (userId,key) → un usuario tiene UNOS
+datos globales. Como ahora son por-org:
+- Cambiar a clave compuesta `(userId, organizationId, key)` con su unique index.
+- REQUIERE migración de schema Drizzle (nueva columna organizationId + reindex).
+- Las server actions de tools (email-signature data, prefs) pasan a leer/escribir con
+  el `activeOrganizationId` de la sesión.
+- Migración de datos existentes: los appSetting actuales se atan a la org actual del
+  usuario (MEGACORP) al migrar.
+
+## 9. Jerarquía madre → afiliadas (decisión #4)
+
+Better Auth NO soporta jerarquía de orgs nativamente. Hay que agregarla:
+- Nueva columna `organization.parentOrganizationId` (nullable; null = org madre/raíz).
+- Una org madre tiene parentId = null; las afiliadas apuntan a su madre.
+- Árbol de 2 niveles: madre → hijas (no se permite más profundidad por ahora).
+- El Super Admin crea madres (parentId null) y afiliadas (parentId = una madre).
+- **Implicaciones a definir más adelante (no bloquean Fase A):**
+  - ¿El owner de la org MADRE ve/gestiona sus afiliadas, o solo el Super Admin?
+    (Adroc dijo: owner solo ve lo suyo → por defecto el owner de la madre NO gestiona
+    hijas; eso lo hace el Super Admin. CONFIRMAR si la madre debe tener visibilidad.)
+  - Reportería consolidada del grupo (madre agrega datos de hijas) → futuro, no existe aún.
+
+## 10. Fases de implementación (actualizado)
+
+- **Fase A** (base): `user.isSuperAdmin` + seed para it@erpconnectai.com +
+  `requireSuperAdmin()` helper + activar multi-org (subir organizationLimit) +
+  `organization.parentOrganizationId` (columna, migración). Sin UI todavía.
+- **Fase B**: selector de organización en el shell (cambiar org activa).
+- **Fase C**: panel Super Admin `/app/admin` — CRUD de orgs (madre/afiliada con
+  jerarquía) + CRUD de usuarios cross-org + asignar owners.
+- **Fase D**: datos de usuario por-org (migración appSetting §8) + aislamiento + auditoría + tests de seguridad.
+
+El orden permite tener super-admin + multi-org funcionando (A-C) antes de la migración
+de datos por-org (D), que es la más delicada.
 
 ## 6. Alcance / esfuerzo
 
