@@ -1,6 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -36,16 +37,27 @@ type InvitationInfo = {
   organizationName: string
 } | null
 
+function extractToken(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  try {
+    const url = new URL(trimmed)
+    return url.searchParams.get('token') || url.searchParams.get('id')
+  } catch {
+    return trimmed.length > 8 ? trimmed : null
+  }
+}
+
 export function AcceptInvitationForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
   const [info, setInfo] = useState<InvitationInfo>(null)
-  const [fetchDone, setFetchDone] = useState(false)
+  const [fetchDoneToken, setFetchDoneToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  // Sin token no hay nada que cargar, así que loadingInfo nace en false
-  // sin necesidad de un setState síncrono en el body del effect.
-  const loadingInfo = token ? !fetchDone : false
+  const [manualInvite, setManualInvite] = useState('')
+  const loadingInfo = token ? fetchDoneToken !== token : false
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -72,7 +84,7 @@ export function AcceptInvitationForm() {
       })
       .catch(() => {})
       .finally(() => {
-        if (!cancelled) setFetchDone(true)
+        if (!cancelled) setFetchDoneToken(token)
       })
 
     return () => {
@@ -84,11 +96,67 @@ export function AcceptInvitationForm() {
     return <p className="text-sm text-muted-foreground">Cargando invitación…</p>
   }
 
-  if (!token || !info) {
+  if (!token) {
     return (
-      <p className="text-sm text-destructive">
-        Invitación inválida o expirada. Pedile a tu admin que te invite de nuevo.
-      </p>
+      <div className="space-y-5">
+        <div className="rounded-xl border bg-muted/40 p-4 text-sm leading-6 text-muted-foreground">
+          <p className="font-medium text-foreground">Abrí el enlace exacto de tu correo.</p>
+          <p className="mt-1">
+            Por seguridad, una invitación solo funciona con el token privado que viene en el
+            email. Si llegaste desde la landing, pegá aquí el enlace completo de invitación.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium" htmlFor="invite-link">
+            Enlace o token de invitación
+          </label>
+          <Input
+            id="invite-link"
+            value={manualInvite}
+            onChange={(event) => setManualInvite(event.target.value)}
+            placeholder="Pegá el enlace completo del correo"
+          />
+        </div>
+
+        <Button
+          type="button"
+          className="w-full"
+          onClick={() => {
+            const nextToken = extractToken(manualInvite)
+            if (!nextToken) {
+              toast.error('Pegá el enlace completo de invitación')
+              return
+            }
+            router.push(`/accept-invitation?token=${encodeURIComponent(nextToken)}`)
+          }}
+        >
+          Continuar con mi invitación
+        </Button>
+
+        <p className="text-center text-xs text-muted-foreground">
+          ¿Ya tenés cuenta?{' '}
+          <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+            Iniciar sesión
+          </Link>
+        </p>
+      </div>
+    )
+  }
+
+  if (!info) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-sm text-destructive">
+          Invitación inválida, expirada o ya utilizada. Pedile a tu admin que te envíe una
+          invitación nueva.
+        </div>
+        <Link href="/login" className="block">
+          <Button variant="outline" className="w-full">
+            Ir a iniciar sesión
+          </Button>
+        </Link>
+      </div>
     )
   }
 
@@ -130,9 +198,9 @@ export function AcceptInvitationForm() {
 
   return (
     <div className="space-y-4">
-      <div className="text-sm text-muted-foreground">
-        Te invitaron a unirte a <strong>{info.organizationName}</strong> con el email{' '}
-        <strong>{info.email}</strong>.
+      <div className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">
+        Te invitaron a unirte a <strong className="text-foreground">{info.organizationName}</strong>{' '}
+        con el email <strong className="text-foreground">{info.email}</strong>.
       </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

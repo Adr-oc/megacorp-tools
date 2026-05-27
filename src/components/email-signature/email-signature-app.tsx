@@ -17,7 +17,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -164,8 +163,10 @@ export function EmailSignatureApp({
                         value={userTemplate.id}
                         onValueChange={(v) => setUserSelectedId(v)}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Elegí una plantilla" />
+                        <SelectTrigger className="min-w-48">
+                          <span data-slot="select-value" className="flex flex-1 items-center gap-1.5 text-left">
+                            {userTemplate.name || 'Sin nombre'}
+                          </span>
                         </SelectTrigger>
                         <SelectContent>
                           {templates.map((t) => (
