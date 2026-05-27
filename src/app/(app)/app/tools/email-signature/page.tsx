@@ -3,8 +3,8 @@ import { getTemplates, getUserData } from '@/lib/email-signature/actions'
 import { EmailSignatureApp } from '@/components/email-signature/email-signature-app'
 
 export default async function EmailSignaturePage() {
-  const { role } = await requireApp('email-signature')
-  const isAdmin = role === 'admin' || role === 'owner'
+  const { role, isSuperAdmin } = await requireApp('email-signature')
+  const isAdmin = isSuperAdmin || role === 'admin' || role === 'owner'
 
   const [templates, data] = await Promise.all([getTemplates(), getUserData()])
 

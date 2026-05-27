@@ -9,7 +9,7 @@ import type { AppRole } from '@/lib/apps/types'
 
 export async function requireApp(
   appId: string
-): Promise<{ userId: string; orgId: string; role: AppRole }> {
+): Promise<{ userId: string; orgId: string; role: AppRole; isSuperAdmin: boolean }> {
   const app = getApp(appId)
   if (!app) {
     redirect('/app')
@@ -46,5 +46,10 @@ export async function requireApp(
     redirect('/app')
   }
 
-  return { userId: session.user.id, orgId: activeOrgId, role }
+  return {
+    userId: session.user.id,
+    orgId: activeOrgId,
+    role,
+    isSuperAdmin: session.user.isSuperAdmin === true,
+  }
 }

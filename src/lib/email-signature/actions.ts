@@ -21,6 +21,7 @@ type Session = {
   userId: string
   orgId: string
   role: string
+  isSuperAdmin: boolean
 }
 
 async function getSessionContext(): Promise<Session> {
@@ -38,7 +39,12 @@ async function getSessionContext(): Promise<Session> {
     .limit(1)
 
   const role = rows[0]?.role ?? 'member'
-  return { userId: session.user.id, orgId, role }
+  return {
+    userId: session.user.id,
+    orgId,
+    role,
+    isSuperAdmin: session.user.isSuperAdmin === true,
+  }
 }
 
 // Devuelve el array de plantillas de la organización, migrando el formato viejo
@@ -72,7 +78,7 @@ export async function saveTemplates(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const ctx = await getSessionContext()
   // SEGURIDAD: solo admin/owner pueden guardar las plantillas de la org.
-  if (ctx.role !== 'admin' && ctx.role !== 'owner') {
+  if (!ctx.isSuperAdmin && ctx.role !== 'admin' && ctx.role !== 'owner') {
     return { ok: false, error: 'No tenés permiso para definir las plantillas' }
   }
 
