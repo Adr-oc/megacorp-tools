@@ -42,13 +42,24 @@ export type TemplateImage = z.infer<typeof templateImageSchema>
 // Máximo de plantillas por organización.
 export const MAX_TEMPLATES = 6
 
+// HTML generado por editores de firmas puede venir muy verboso: tablas
+// anidadas, CSS inline e incluso data URLs pequeñas. 100 KB era demasiado
+// bajo para plantillas reales.
+export const MAX_TEMPLATE_HTML_CHARS = 1_000_000
+
 // Una plantilla individual de firma definida por el admin.
 // Valor fijo por defecto para un campo (si no es editable por el usuario,
 // se usa este valor; si es editable, sirve como placeholder/valor inicial).
 export const signatureTemplateSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1, 'El nombre es requerido').max(60),
-  html: z.string().min(1, 'El HTML de la plantilla es requerido').max(100_000),
+  html: z
+    .string()
+    .min(1, 'El HTML de la plantilla es requerido')
+    .max(
+      MAX_TEMPLATE_HTML_CHARS,
+      'El HTML de la plantilla es demasiado grande (máx 1 MB)'
+    ),
   images: z.array(templateImageSchema).max(8).default([]),
   // Campos que el usuario puede editar.
   editableFields: z.array(z.enum(SIGNATURE_FIELDS)).default([]),
@@ -68,7 +79,7 @@ export type TemplateSet = z.infer<typeof templateSetSchema>
 // Formato VIEJO: una sola plantilla guardada directamente bajo TEMPLATE_KEY,
 // sin id, sin name y sin array. Se usa solo para migrar al leer.
 export const legacyTemplateSchema = z.object({
-  html: z.string().min(1).max(100_000),
+  html: z.string().min(1).max(MAX_TEMPLATE_HTML_CHARS),
   images: z.array(templateImageSchema).max(8).default([]),
   editableFields: z.array(z.enum(SIGNATURE_FIELDS)).default([]),
   fixedValues: z.record(z.string(), z.string()).default({}),
