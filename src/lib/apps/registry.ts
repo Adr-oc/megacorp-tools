@@ -8,6 +8,10 @@ import {
   Calculator,
   MailCheck,
   ShieldCheck,
+  Megaphone,
+  MessageSquareText,
+  NotebookTabs,
+  GraduationCap,
 } from 'lucide-react'
 import type { AppDefinition, AppRole } from './types'
 
@@ -85,13 +89,49 @@ export const apps: AppDefinition[] = [
     status: 'available',
   },
   {
+    id: 'announcements',
+    name: 'Anuncios',
+    description: 'Panel corto de avisos internos con opción de notificar por correo.',
+    icon: Megaphone,
+    href: '/app/tools/announcements',
+    requiredRoles: ['member', 'admin', 'owner'],
+    status: 'available',
+  },
+  {
+    id: 'ideas-board',
+    name: 'Foro de ideas',
+    description: 'Propuestas tipo Reddit para sistemas, Odoo, actividades y mejoras generales, con votos y comentarios.',
+    icon: MessageSquareText,
+    href: '/app/tools/ideas-board',
+    requiredRoles: ['member', 'admin', 'owner'],
+    status: 'available',
+  },
+  {
     id: 'image-ai',
-    name: 'Procesador de imágenes IA',
-    description: 'OCR, descripción, remoción de fondo y más.',
+    name: 'Extractor IA de documentos',
+    description: 'Procesamiento de imágenes y PDFs para extraer datos con modelo vision de NVIDIA cuando esté configurado.',
     icon: ImageIcon,
     href: '/app/tools/image-ai',
     requiredRoles: ['member', 'admin', 'owner'],
-    status: 'coming-soon',
+    status: 'available',
+  },
+  {
+    id: 'notas',
+    name: 'NOTAS',
+    description: 'Mini Notion interno: páginas, bloques, búsqueda rápida y base para documentación viva.',
+    icon: NotebookTabs,
+    href: '/app/tools/notas',
+    requiredRoles: ['member', 'admin', 'owner'],
+    status: 'available',
+  },
+  {
+    id: 'learning',
+    name: 'Learning',
+    description: 'Biblioteca de aprendizaje con cursos, materiales y progreso por contenido.',
+    icon: GraduationCap,
+    href: '/app/tools/learning',
+    requiredRoles: ['member', 'admin', 'owner'],
+    status: 'available',
   },
 ]
 
