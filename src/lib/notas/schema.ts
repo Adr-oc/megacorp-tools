@@ -14,6 +14,8 @@ export const notasPageSchema = z.object({
   archived: z.boolean().default(false),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+  lastEditedById: z.string().optional(),
+  lastEditedByName: z.string().optional(),
   authorId: z.string().optional(),
   authorName: z.string().optional(),
 })
@@ -77,8 +79,36 @@ export const NOTAS_TEMPLATES = [
     content:
       '## Error\n\n## Contexto\n\n## Causa probable\n\n## Solución\n1. \n\n## Cómo verificar\n- ',
   },
+  {
+    id: 'politica',
+    name: 'Política',
+    icon: '📌',
+    tags: ['política', 'empresa'],
+    title: 'Política interna',
+    content:
+      '## Resumen\n\n## Aplica a\n\n## Regla\n\n## Excepciones\n\n## Responsable\n\n## Última revisión\n',
+  },
+  {
+    id: 'manual',
+    name: 'Manual rápido',
+    icon: '🧭',
+    tags: ['manual', 'guía'],
+    title: 'Manual rápido',
+    content:
+      '## Para qué sirve\n\n## Antes de empezar\n- \n\n## Pasos\n1. \n2. \n3. \n\n## Problemas comunes\n- \n\n## Contacto / responsable\n',
+  },
 ] as const
 
 export function emptyNotasWorkspace(): NotasWorkspace {
   return { version: 1, pages: [] }
+}
+
+export function normalizeNotasTags(tags: string[]) {
+  return Array.from(
+    new Set(
+      tags
+        .map((tag) => tag.trim().replace(/^#/, '').toLowerCase())
+        .filter(Boolean)
+    )
+  ).slice(0, 12)
 }

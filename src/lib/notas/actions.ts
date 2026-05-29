@@ -12,6 +12,7 @@ import {
   MAX_NOTAS_PAGES,
   NOTAS_KEY,
   emptyNotasWorkspace,
+  normalizeNotasTags,
   notasPageIdSchema,
   notasWorkspaceSchema,
   saveNotasPageSchema,
@@ -128,9 +129,7 @@ export async function saveNotasPage(input: unknown): Promise<NotasResult<NotasPa
       return { ok: false, error: `Máximo ${MAX_NOTAS_PAGES} páginas por organización` }
     }
 
-    const normalizedTags = Array.from(
-      new Set(parsed.data.tags.map((tag) => tag.trim()).filter(Boolean))
-    )
+    const normalizedTags = normalizeNotasTags(parsed.data.tags)
 
     const page: NotasPage =
       existingIndex >= 0
@@ -141,6 +140,8 @@ export async function saveNotasPage(input: unknown): Promise<NotasResult<NotasPa
             content: parsed.data.content,
             tags: normalizedTags,
             updatedAt: now,
+            lastEditedById: ctx.userId,
+            lastEditedByName: ctx.userName,
           }
         : {
             id: crypto.randomUUID(),
@@ -154,6 +155,8 @@ export async function saveNotasPage(input: unknown): Promise<NotasResult<NotasPa
             updatedAt: now,
             authorId: ctx.userId,
             authorName: ctx.userName,
+            lastEditedById: ctx.userId,
+            lastEditedByName: ctx.userName,
           }
 
     const nextPages = existingIndex >= 0 ? [...workspace.pages] : [page, ...workspace.pages]
@@ -180,7 +183,7 @@ export async function toggleNotasFavorite(input: unknown): Promise<NotasResult<N
     const favoriteBy = current.favoriteBy.includes(ctx.userId)
       ? current.favoriteBy.filter((id) => id !== ctx.userId)
       : [...current.favoriteBy, ctx.userId]
-    const page: NotasPage = { ...current, favoriteBy, updatedAt: new Date().toISOString() }
+    const page: NotasPage = { ...current, favoriteBy }
     const pages = [...workspace.pages]
     pages[index] = page
 
@@ -191,21 +194,72 @@ export async function toggleNotasFavorite(input: unknown): Promise<NotasResult<N
   }
 }
 
-export async function deleteNotasPage(input: unknown): Promise<NotasResult<{ id: string }>> {
+export async function duplicateNotasPage(input: unknown): Promise<NotasResult<NotasPage>> {
+  try {
+    const ctx = await getSessionContext()
+    const parsed = notasPageIdSchema.safeParse(input)
+    if (!parsed.success) return { ok: false, error: 'Página inválida' }
+
+    const workspace = await readWorkspace(ctx.orgId)
+    if (workspace.pages.length >= MAX_NOTAS_PAGES) {
+      return { ok: false, error: `Máximo ${MAX_NOTAS_PAGES} páginas por organización` }
+    }
+
+    const source = workspace.pages.find((page) => page.id === parsed.data.id)
+    if (!source) return { ok: false, error: 'No se encontró la página' }
+
+    const now = new Date().toISOString()
+    const page: NotasPage = {
+      ...source,
+      id: crypto.randomUUID(),
+      title: `${source.title} (copia)`,
+      favoriteBy: [],
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+      authorId: ctx.userId,
+      authorName: ctx.userName,
+      lastEditedById: ctx.userId,
+      lastEditedByName: ctx.userName,
+    }
+
+    await writeWorkspace(ctx.orgId, { version: 1, pages: [page, ...workspace.pages] })
+    return { ok: true, data: page }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'No se pudo duplicar' }
+  }
+}
+
+export async function archiveNotasPage(input: unknown): Promise<NotasResult<{ id: string }>> {
   try {
     const ctx = await getSessionContext()
     if (!canManageDangerousActions(ctx)) {
-      return { ok: false, error: 'Solo admin/owner puede borrar páginas' }
+      return { ok: false, error: 'Solo admin/owner puede archivar páginas' }
     }
 
     const parsed = notasPageIdSchema.safeParse(input)
     if (!parsed.success) return { ok: false, error: 'Página inválida' }
 
     const workspace = await readWorkspace(ctx.orgId)
-    const pages = workspace.pages.filter((page) => page.id !== parsed.data.id)
+    const pages = workspace.pages.map((page) =>
+      page.id === parsed.data.id
+        ? {
+            ...page,
+            archived: true,
+            updatedAt: new Date().toISOString(),
+            lastEditedById: ctx.userId,
+            lastEditedByName: ctx.userName,
+          }
+        : page
+    )
+
     await writeWorkspace(ctx.orgId, { version: 1, pages })
     return { ok: true, data: { id: parsed.data.id } }
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : 'No se pudo borrar' }
+    return { ok: false, error: error instanceof Error ? error.message : 'No se pudo archivar' }
   }
+}
+
+export async function deleteNotasPage(input: unknown): Promise<NotasResult<{ id: string }>> {
+  return archiveNotasPage(input)
 }
