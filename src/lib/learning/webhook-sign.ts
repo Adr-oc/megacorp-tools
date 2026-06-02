@@ -14,11 +14,11 @@ import { createPublicKey, createSign, generateKeyPairSync, type KeyObject } from
  * en el `appSetting` con key `learning:webhook:private_key_jwk` (chmod 600
  * en disco, columna `jsonb` encriptada con la key del contenedor).
  */
-let cached: { kid: string; publicJwk: Record<string, unknown>; privatePem: string } | null = null
+let cached: { kid: string; publicJwk: LearningJwk; privatePem: string } | null = null
 
 const KID = 'megatools-learning-2026-06'
 
-function ensureKeys() {
+function ensureKeys(): { kid: string; publicJwk: LearningJwk; privatePem: string } {
   if (cached) return cached
 
   // En producción real, leemos de DB. En dev/sin DB inicializada,
@@ -29,12 +29,12 @@ function ensureKeys() {
     privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
   })
 
-  const publicJwk = pemToPublicJwk(publicKey, KID)
+  const publicJwk: LearningJwk = pemToPublicJwk(publicKey, KID)
   cached = { kid: KID, publicJwk, privatePem: privateKey }
   return cached
 }
 
-function pemToPublicJwk(pem: string, kid: string): Record<string, unknown> {
+function pemToPublicJwk(pem: string, kid: string): LearningJwk {
   // Parseamos el SPKI PEM a JWK usando Node crypto. Sin dependencias extra.
   const key: KeyObject = createPublicKey(pem)
   const jwk = key.export({ format: 'jwk' }) as { n: string; e: string; kty: string }
@@ -48,8 +48,18 @@ function pemToPublicJwk(pem: string, kid: string): Record<string, unknown> {
   }
 }
 
+export interface LearningJwk {
+  kty: string
+  use: string
+  alg: string
+  kid: string
+  n: string
+  e: string
+  [key: string]: string
+}
+
 /** Devuelve la clave pública en formato JWKS (array de 1 elemento). */
-export function getLearningJwks(): { keys: Array<Record<string, unknown>> } {
+export function getLearningJwks(): { keys: LearningJwk[] } {
   return { keys: [ensureKeys().publicJwk] }
 }
 
@@ -80,9 +90,9 @@ export interface SignedLearningEvent extends LearningEvent {
  * tests; en fase 3 la envía LearnHouse.
  */
 export function signLearningEvent(event: LearningEvent): SignedLearningEvent {
-  const { kid, privatePem } = ensureKeys()
-  const header = { alg: 'RS256', typ: 'JWT', kid }
-  const body = { ...event, kid }
+  const keys = ensureKeys()
+  const header = { alg: 'RS256', typ: 'JWT', kid: keys.kid }
+  const body = { ...event, kid: keys.kid }
   const headerB64 = base64url(JSON.stringify(header))
   const bodyB64 = base64url(JSON.stringify(body))
   const signingInput = `${headerB64}.${bodyB64}`
@@ -90,10 +100,10 @@ export function signLearningEvent(event: LearningEvent): SignedLearningEvent {
   const signer = createSign('RSA-SHA256')
   signer.update(signingInput)
   signer.end()
-  const signature = signer.sign(privatePem)
+  const signature = signer.sign(keys.privatePem)
   const signatureB64 = base64urlBuf(signature)
 
-  return { ...event, signature: `${signingInput}.${signatureB64}`, kid }
+  return { ...event, signature: `${signingInput}.${signatureB64}`, kid: keys.kid }
 }
 
 function base64url(input: string): string {

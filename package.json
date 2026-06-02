@@ -14,7 +14,8 @@
     "db:push": "drizzle-kit push",
     "bootstrap": "tsx --env-file=.env scripts/bootstrap.ts",
     "pdf:fixtures": "tsx scripts/build-pdf-fixtures.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:unit": "tsx --test tests/unit/*.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
