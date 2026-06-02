@@ -127,6 +127,8 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
   const [mode, setMode] = useState<LearningMode>('student')
   const [showForm, setShowForm] = useState(false)
   const [showRouteForm, setShowRouteForm] = useState(false)
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
+  const [selectedResourceId, setSelectedResourceId] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<FilterValue<LearningType>>('todos')
   const [categoryFilter, setCategoryFilter] = useState('todos')
   const [levelFilter, setLevelFilter] = useState<FilterValue<LearningLevel>>('todos')
@@ -155,6 +157,11 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
   const completionPercent = pct(completedCount, publishedContents.length + publishedResources.length)
   const activeContents = publishedContents.filter((content) => byContent.get(content.id) === 'en progreso')
   const recommendation = activeContents[0] ?? publishedContents.find((content) => byContent.get(content.id) !== 'completado')
+  const selectedRoute = !isAdminMode && selectedRouteId
+    ? publishedRoutes.find((route) => route.id === selectedRouteId)
+    : undefined
+  const selectedRouteResources = selectedRoute?.courses.flatMap((course) => course.resources) ?? []
+  const selectedResource = selectedRouteResources.find((resource) => resource.id === selectedResourceId) ?? selectedRouteResources[0]
 
   const filteredContents = visibleContents.filter((content) => {
     const status = byContent.get(content.id) ?? 'pendiente'
@@ -180,6 +187,11 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
     setDraft(emptyDraft)
     setEditingId(null)
     setShowForm(false)
+  }
+
+  function openRoute(route: LearningRoute) {
+    setSelectedRouteId(route.id)
+    setSelectedResourceId(route.courses[0]?.resources[0]?.id ?? null)
   }
 
   function editRoute(route: LearningRoute) {
@@ -323,12 +335,25 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
               isAdminMode={isAdminMode}
               onCreate={() => {
                 setMode('admin')
+                setSelectedRouteId(null)
+                setSelectedResourceId(null)
                 setShowRouteForm((value) => !value)
                 setShowForm(false)
               }}
             />
 
-            {isAdminMode ? (
+            {selectedRoute ? (
+              <CoursePlayer
+                route={selectedRoute}
+                selectedResource={selectedResource}
+                selectedResourceId={selectedResourceId}
+                byContent={byContent}
+                disabled={isPending}
+                onBack={() => { setSelectedRouteId(null); setSelectedResourceId(null) }}
+                onSelectResource={setSelectedResourceId}
+                onProgress={setContentProgress}
+              />
+            ) : isAdminMode ? (
               <AdminDashboard
                 contents={contents}
                 routes={routes}
@@ -363,7 +388,7 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
               />
             )}
 
-            {!isAdminMode && publishedRoutes.length > 0 ? (
+            {!selectedRoute && !isAdminMode && publishedRoutes.length > 0 ? (
               <section className="rounded-[1rem] bg-background p-4 shadow-sm ring-1 ring-border/70">
                 <div className="mb-4">
                   <h2 className="text-lg font-bold tracking-tight">Rutas de aprendizaje</h2>
@@ -378,70 +403,73 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
                       byContent={byContent}
                       disabled={isPending}
                       onProgress={setContentProgress}
+                      onEnter={() => openRoute(route)}
                     />
                   ))}
                 </div>
               </section>
             ) : null}
 
-            <section className="rounded-[1rem] bg-background p-4 shadow-sm ring-1 ring-border/70">
-              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight">
-                    {isAdminMode ? 'Biblioteca docente' : 'Cursos'}
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    {isAdminMode
-                      ? 'Administra publicaciones y borradores sin tocar el progreso de estudiante.'
-                      : 'Elige un curso, avanza y deja rastro. Civilización básica.'}
-                  </p>
+            {!selectedRoute ? (
+              <section className="rounded-[1rem] bg-background p-4 shadow-sm ring-1 ring-border/70">
+                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold tracking-tight">
+                      {isAdminMode ? 'Biblioteca docente' : 'Cursos'}
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      {isAdminMode
+                        ? 'Administra publicaciones y borradores sin tocar el progreso de estudiante.'
+                        : 'Elige un curso, avanza y deja rastro. Civilización básica.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <NativeSelect value={levelFilter} onChange={(value) => setLevelFilter(value as FilterValue<LearningLevel>)}>
+                      <option value="todos">Todos los niveles</option>
+                      {LEARNING_LEVELS.map((level) => <option key={level} value={level}>{LEARNING_LEVEL_LABELS[level]}</option>)}
+                    </NativeSelect>
+                    <NativeSelect value={statusFilter} onChange={(value) => setStatusFilter(value as FilterValue<LearningProgressStatus>)}>
+                      <option value="todos">Estados</option>
+                      {LEARNING_PROGRESS_STATUSES.map((status) => <option key={status} value={status}>{LEARNING_PROGRESS_LABELS[status]}</option>)}
+                    </NativeSelect>
+                    <Button variant="outline" size="icon-sm" aria-label="Filtros">
+                      <Filter className="size-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <NativeSelect value={levelFilter} onChange={(value) => setLevelFilter(value as FilterValue<LearningLevel>)}>
-                    <option value="todos">Todos los niveles</option>
-                    {LEARNING_LEVELS.map((level) => <option key={level} value={level}>{LEARNING_LEVEL_LABELS[level]}</option>)}
-                  </NativeSelect>
-                  <NativeSelect value={statusFilter} onChange={(value) => setStatusFilter(value as FilterValue<LearningProgressStatus>)}>
-                    <option value="todos">Estados</option>
-                    {LEARNING_PROGRESS_STATUSES.map((status) => <option key={status} value={status}>{LEARNING_PROGRESS_LABELS[status]}</option>)}
-                  </NativeSelect>
-                  <Button variant="outline" size="icon-sm" aria-label="Filtros">
-                    <Filter className="size-4" />
-                  </Button>
-                </div>
-              </div>
 
-              <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-                <Chip active={categoryFilter === 'todos'} onClick={() => setCategoryFilter('todos')}>All courses</Chip>
-                {categories.map((category) => (
-                  <Chip key={category} active={categoryFilter === category} onClick={() => setCategoryFilter(category)}>
-                    {category}
-                  </Chip>
-                ))}
-                <Chip active={typeFilter !== 'todos'} onClick={() => setTypeFilter(typeFilter === 'todos' ? 'curso' : 'todos')}>
-                  {typeFilter === 'todos' ? 'Tipos' : LEARNING_TYPE_LABELS[typeFilter]}
-                </Chip>
-              </div>
-
-              {filteredContents.length > 0 ? (
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                  {filteredContents.map((content) => (
-                    <LearningCourseCard
-                      key={content.id}
-                      content={content}
-                      isAdmin={isAdminMode}
-                      status={byContent.get(content.id) ?? 'pendiente'}
-                      disabled={isPending}
-                      onEdit={() => editContent(content)}
-                      onDelete={() => removeContent(content.id)}
-                      onProgress={(status) => setContentProgress(content.id, status)}
-                    />
+                <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+                  <Chip active={categoryFilter === 'todos'} onClick={() => setCategoryFilter('todos')}>All courses</Chip>
+                  {categories.map((category) => (
+                    <Chip key={category} active={categoryFilter === category} onClick={() => setCategoryFilter(category)}>
+                      {category}
+                    </Chip>
                   ))}
+                  <Chip active={typeFilter !== 'todos'} onClick={() => setTypeFilter(typeFilter === 'todos' ? 'curso' : 'todos')}>
+                    {typeFilter === 'todos' ? 'Tipos' : LEARNING_TYPE_LABELS[typeFilter]}
+                  </Chip>
                 </div>
-              ) : (
-                <EmptyState title="Sin cursos" description="No hay contenidos que coincidan con esos filtros." />
-              )}
-            </section>
+
+                {filteredContents.length > 0 ? (
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {filteredContents.map((content) => (
+                      <LearningCourseCard
+                        key={content.id}
+                        content={content}
+                        isAdmin={isAdminMode}
+                        status={byContent.get(content.id) ?? 'pendiente'}
+                        disabled={isPending}
+                        onEdit={() => editContent(content)}
+                        onDelete={() => removeContent(content.id)}
+                        onProgress={(status) => setContentProgress(content.id, status)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState title="Sin cursos" description="No hay contenidos que coincidan con esos filtros." />
+                )}
+              </section>
+            ) : null}
           </div>
         </main>
       </div>
@@ -841,6 +869,189 @@ function RouteBuilder({
   )
 }
 
+function renderResourceIcon(type: LearningResourceType, className: string) {
+  if (type === 'video' || type === 'clase') return <PlayCircle className={className} />
+  if (type === 'documento' || type === 'texto') return <FileText className={className} />
+  if (type === 'link') return <ExternalLink className={className} />
+  return <ClipboardList className={className} />
+}
+
+function CoursePlayer({
+  route,
+  selectedResource,
+  selectedResourceId,
+  byContent,
+  disabled,
+  onBack,
+  onSelectResource,
+  onProgress,
+}: {
+  route: LearningRoute
+  selectedResource?: LearningResource
+  selectedResourceId: string | null
+  byContent: Map<string, LearningProgressStatus>
+  disabled: boolean
+  onBack: () => void
+  onSelectResource: (resourceId: string) => void
+  onProgress: (contentId: string, status: LearningProgressStatus) => void
+}) {
+  const resources = route.courses.flatMap((course) => course.resources)
+  const completed = resources.filter((resource) => byContent.get(resource.id) === 'completado').length
+  const percent = pct(completed, resources.length)
+  const selectedCourse = route.courses.find((course) => course.resources.some((resource) => resource.id === selectedResource?.id))
+  const status = selectedResource ? byContent.get(selectedResource.id) ?? 'pendiente' : 'pendiente'
+
+  return (
+    <section className="overflow-hidden rounded-[1rem] bg-background shadow-sm ring-1 ring-border/70">
+      <div className="grid min-h-[calc(100svh-180px)] lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 border-r bg-background">
+          <div className="border-b bg-gradient-to-br from-brand-accent/25 via-brand-accent/8 to-muted p-5">
+            <Button variant="ghost" size="sm" className="mb-4 rounded-full" onClick={onBack}>
+              <ChevronLeft className="size-4" /> Volver a rutas
+            </Button>
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div className="max-w-3xl">
+                <Badge variant="secondary" className="mb-3 bg-background/75">{route.category}</Badge>
+                <h2 className="text-3xl font-black tracking-tight md:text-5xl">{route.title}</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  {route.description || 'Esta ruta todavía no tiene descripción. Los admins pueden escribir aquí qué logra el estudiante al terminarla.'}
+                </p>
+              </div>
+              <div className="w-full rounded-2xl bg-background/80 p-4 shadow-sm ring-1 ring-border/70 xl:w-64">
+                <div className="mb-2 flex items-center justify-between text-xs">
+                  <span className="font-semibold">Progreso de ruta</span>
+                  <span className="font-black text-brand-accent">{percent}%</span>
+                </div>
+                <ProgressBar value={percent} />
+                <p className="mt-2 text-xs text-muted-foreground">{completed}/{resources.length} recursos completados</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+            <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border/70">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-brand-accent">
+                {selectedResource ? renderResourceIcon(selectedResource.type, 'size-4') : <BookOpen className="size-4" />} Clase actual
+              </div>
+              {selectedResource ? (
+                <div className="space-y-4">
+                  <div>
+                    <Badge variant="outline" className="mb-2">{selectedCourse?.title ?? 'Curso'}</Badge>
+                    <h3 className="text-2xl font-black tracking-tight">{selectedResource.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {selectedResource.description || 'Sin descripción del recurso todavía.'}
+                    </p>
+                  </div>
+
+                  <div className="overflow-hidden rounded-2xl border bg-muted/30">
+                    {selectedResource.url ? (
+                      selectedResource.type === 'video' || selectedResource.type === 'clase' ? (
+                        <div className="aspect-video bg-black">
+                          <iframe
+                            src={selectedResource.url}
+                            title={selectedResource.title}
+                            className="size-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex min-h-72 flex-col items-center justify-center gap-3 p-8 text-center">
+                          {renderResourceIcon(selectedResource.type, 'size-10 text-brand-accent')}
+                          <p className="max-w-sm text-sm text-muted-foreground">Este recurso vive fuera de MegaLearn. Abrilo en una pestaña nueva y marcá avance aquí.</p>
+                          <a
+                            href={selectedResource.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex h-9 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+                          >
+                            Abrir recurso <ExternalLink className="size-4" />
+                          </a>
+                        </div>
+                      )
+                    ) : (
+                      <div className="flex min-h-72 flex-col items-center justify-center gap-3 p-8 text-center">
+                        {renderResourceIcon(selectedResource.type, 'size-10 text-brand-accent')}
+                        <p className="max-w-md text-sm text-muted-foreground">Recurso de tipo {LEARNING_RESOURCE_TYPE_LABELS[selectedResource.type]}. Agregá URL si es video, documento o link; si es texto, la descripción funciona como clase.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button disabled={disabled} className="rounded-full" onClick={() => onProgress(selectedResource.id, status === 'completado' ? 'completado' : 'completado')}>
+                      <CheckCircle2 className="size-4" /> {status === 'completado' ? 'Completado' : 'Marcar completado'}
+                    </Button>
+                    <Button disabled={disabled} variant="outline" className="rounded-full" onClick={() => onProgress(selectedResource.id, 'en progreso')}>
+                      Guardar en progreso
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState title="Ruta sin recursos" description="Agregá clases, videos o documentos desde Teacher Studio." compact />
+              )}
+            </div>
+
+            <aside className="space-y-3 rounded-2xl bg-muted/25 p-4">
+              <h3 className="font-bold tracking-tight">Qué incluye</h3>
+              <div className="grid gap-2 text-xs">
+                <div className="rounded-xl bg-background p-3 ring-1 ring-border/70"><strong>{route.courses.length}</strong> cursos</div>
+                <div className="rounded-xl bg-background p-3 ring-1 ring-border/70"><strong>{resources.length}</strong> recursos</div>
+                <div className="rounded-xl bg-background p-3 ring-1 ring-border/70"><strong>{LEARNING_LEVEL_LABELS[route.level]}</strong> nivel</div>
+              </div>
+              <div className="rounded-xl border bg-background p-3 text-xs leading-5 text-muted-foreground">
+                Vista tipo Platzi: portada, descripción, temario y clase activa. Sin comprar una plataforma ajena. Qué decepción para el capitalismo SaaS.
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <aside className="bg-muted/20 p-4">
+          <div className="sticky top-4 space-y-4">
+            <div>
+              <h3 className="font-black tracking-tight">Temario</h3>
+              <p className="text-xs text-muted-foreground">Curso 1, curso 2… recursos dentro. Como debería haber sido desde el inicio.</p>
+            </div>
+            <div className="space-y-3">
+              {route.courses.map((course, courseIndex) => (
+                <div key={course.id} className="rounded-2xl bg-background p-3 shadow-sm ring-1 ring-border/70">
+                  <div className="mb-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-accent">Curso {courseIndex + 1}</p>
+                    <h4 className="font-semibold">{course.title || 'Curso sin título'}</h4>
+                    {course.description ? <p className="mt-1 text-xs text-muted-foreground">{course.description}</p> : null}
+                  </div>
+                  <div className="space-y-1.5">
+                    {course.resources.map((resource) => {
+                      const resourceStatus = byContent.get(resource.id) ?? 'pendiente'
+                      return (
+                        <button
+                          key={resource.id}
+                          type="button"
+                          onClick={() => onSelectResource(resource.id)}
+                          className={cn(
+                            'flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-xs transition',
+                            selectedResourceId === resource.id ? 'bg-brand-accent/20 ring-1 ring-brand-accent/30' : 'hover:bg-muted/70'
+                          )}
+                        >
+                          {renderResourceIcon(resource.type, 'size-4 text-brand-accent')}
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-medium">{resource.title || LEARNING_RESOURCE_TYPE_LABELS[resource.type]}</div>
+                            <div className="truncate text-[10px] text-muted-foreground">{LEARNING_RESOURCE_TYPE_LABELS[resource.type]}{resource.duration ? ` · ${resource.duration}` : ''}</div>
+                          </div>
+                          {resourceStatus === 'completado' ? <CheckCircle2 className="size-4 text-brand-accent" /> : null}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  )
+}
+
 function LearningRouteCard({
   route,
   isAdmin,
@@ -849,6 +1060,7 @@ function LearningRouteCard({
   onProgress,
   onEdit,
   onDelete,
+  onEnter,
 }: {
   route: LearningRoute
   isAdmin: boolean
@@ -857,6 +1069,7 @@ function LearningRouteCard({
   onProgress: (contentId: string, status: LearningProgressStatus) => void
   onEdit?: () => void
   onDelete?: () => void
+  onEnter?: () => void
 }) {
   const resources = route.courses.flatMap((course) => course.resources)
   const completed = resources.filter((resource) => byContent.get(resource.id) === 'completado').length
@@ -880,7 +1093,12 @@ function LearningRouteCard({
           <span>•</span>
           <span>{LEARNING_LEVEL_LABELS[route.level]}</span>
         </div>
-        {!isAdmin ? <div className="mt-3"><ProgressBar value={percent} /></div> : null}
+        {!isAdmin ? (
+          <div className="mt-3 space-y-3">
+            <ProgressBar value={percent} />
+            <Button className="w-full rounded-full" onClick={onEnter}>Entrar al curso</Button>
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-3 p-4">
