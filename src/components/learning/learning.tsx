@@ -401,8 +401,6 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
                       route={route}
                       isAdmin={false}
                       byContent={byContent}
-                      disabled={isPending}
-                      onProgress={setContentProgress}
                       onEnter={() => openRoute(route)}
                     />
                   ))}
@@ -716,8 +714,6 @@ function AdminDashboard({
               route={route}
               isAdmin
               byContent={new Map()}
-              disabled={disabled}
-              onProgress={() => undefined}
               onEdit={() => onEditRoute(route)}
               onDelete={() => onDeleteRoute(route.id)}
             />
@@ -896,155 +892,215 @@ function CoursePlayer({
   onProgress: (contentId: string, status: LearningProgressStatus) => void
 }) {
   const resources = route.courses.flatMap((course) => course.resources)
+  const currentIndex = selectedResource ? resources.findIndex((resource) => resource.id === selectedResource.id) : -1
   const completed = resources.filter((resource) => byContent.get(resource.id) === 'completado').length
   const percent = pct(completed, resources.length)
-  const selectedCourse = route.courses.find((course) => course.resources.some((resource) => resource.id === selectedResource?.id))
+  const selectedCourseIndex = route.courses.findIndex((course) => course.resources.some((resource) => resource.id === selectedResource?.id))
+  const selectedCourse = selectedCourseIndex >= 0 ? route.courses[selectedCourseIndex] : route.courses[0]
   const status = selectedResource ? byContent.get(selectedResource.id) ?? 'pendiente' : 'pendiente'
+  const previousResource = currentIndex > 0 ? resources[currentIndex - 1] : undefined
+  const nextResource = currentIndex >= 0 && currentIndex < resources.length - 1 ? resources[currentIndex + 1] : undefined
+
+  function selectCourse(course: LearningCourse) {
+    const first = course.resources[0]
+    if (first) onSelectResource(first.id)
+  }
 
   return (
     <section className="overflow-hidden rounded-[1rem] bg-background shadow-sm ring-1 ring-border/70">
-      <div className="grid min-h-[calc(100svh-180px)] lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 border-r bg-background">
-          <div className="border-b bg-gradient-to-br from-brand-accent/25 via-brand-accent/8 to-muted p-5">
-            <Button variant="ghost" size="sm" className="mb-4 rounded-full" onClick={onBack}>
-              <ChevronLeft className="size-4" /> Volver a rutas
-            </Button>
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-              <div className="max-w-3xl">
-                <Badge variant="secondary" className="mb-3 bg-background/75">{route.category}</Badge>
-                <h2 className="text-3xl font-black tracking-tight md:text-5xl">{route.title}</h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  {route.description || 'Esta ruta todavía no tiene descripción. Los admins pueden escribir aquí qué logra el estudiante al terminarla.'}
-                </p>
-              </div>
-              <div className="w-full rounded-2xl bg-background/80 p-4 shadow-sm ring-1 ring-border/70 xl:w-64">
-                <div className="mb-2 flex items-center justify-between text-xs">
-                  <span className="font-semibold">Progreso de ruta</span>
-                  <span className="font-black text-brand-accent">{percent}%</span>
-                </div>
-                <ProgressBar value={percent} />
-                <p className="mt-2 text-xs text-muted-foreground">{completed}/{resources.length} recursos completados</p>
-              </div>
+      <div className="border-b bg-gradient-to-br from-brand-accent/25 via-background to-muted/70 p-4 md:p-6">
+        <Button variant="ghost" size="sm" className="mb-5 rounded-full" onClick={onBack}>
+          <ChevronLeft className="size-4" /> Mis rutas
+        </Button>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-end">
+          <div className="max-w-4xl">
+            <div className="mb-3 flex flex-wrap gap-2">
+              <Badge variant="secondary" className="bg-background/75">{route.category}</Badge>
+              <Badge variant="outline" className="bg-background/60">{LEARNING_LEVEL_LABELS[route.level]}</Badge>
             </div>
+            <h2 className="text-3xl font-black tracking-tight md:text-5xl">{route.title}</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
+              {route.description || 'Esta ruta todavía no tiene descripción. El estudiante necesita saber por qué entrar, no solo recibir una lista. Misterioso avance humano.'}
+            </p>
           </div>
 
-          <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-            <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border/70">
-              <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-brand-accent">
-                {selectedResource ? renderResourceIcon(selectedResource.type, 'size-4') : <BookOpen className="size-4" />} Clase actual
-              </div>
-              {selectedResource ? (
-                <div className="space-y-4">
-                  <div>
-                    <Badge variant="outline" className="mb-2">{selectedCourse?.title ?? 'Curso'}</Badge>
-                    <h3 className="text-2xl font-black tracking-tight">{selectedResource.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {selectedResource.description || 'Sin descripción del recurso todavía.'}
-                    </p>
-                  </div>
-
-                  <div className="overflow-hidden rounded-2xl border bg-muted/30">
-                    {selectedResource.url ? (
-                      selectedResource.type === 'video' || selectedResource.type === 'clase' ? (
-                        <div className="aspect-video bg-black">
-                          <iframe
-                            src={selectedResource.url}
-                            title={selectedResource.title}
-                            className="size-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowFullScreen
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex min-h-72 flex-col items-center justify-center gap-3 p-8 text-center">
-                          {renderResourceIcon(selectedResource.type, 'size-10 text-brand-accent')}
-                          <p className="max-w-sm text-sm text-muted-foreground">Este recurso vive fuera de MegaLearn. Abrilo en una pestaña nueva y marcá avance aquí.</p>
-                          <a
-                            href={selectedResource.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex h-9 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
-                          >
-                            Abrir recurso <ExternalLink className="size-4" />
-                          </a>
-                        </div>
-                      )
-                    ) : (
-                      <div className="flex min-h-72 flex-col items-center justify-center gap-3 p-8 text-center">
-                        {renderResourceIcon(selectedResource.type, 'size-10 text-brand-accent')}
-                        <p className="max-w-md text-sm text-muted-foreground">Recurso de tipo {LEARNING_RESOURCE_TYPE_LABELS[selectedResource.type]}. Agregá URL si es video, documento o link; si es texto, la descripción funciona como clase.</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button disabled={disabled} className="rounded-full" onClick={() => onProgress(selectedResource.id, status === 'completado' ? 'completado' : 'completado')}>
-                      <CheckCircle2 className="size-4" /> {status === 'completado' ? 'Completado' : 'Marcar completado'}
-                    </Button>
-                    <Button disabled={disabled} variant="outline" className="rounded-full" onClick={() => onProgress(selectedResource.id, 'en progreso')}>
-                      Guardar en progreso
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <EmptyState title="Ruta sin recursos" description="Agregá clases, videos o documentos desde Teacher Studio." compact />
-              )}
+          <div className="rounded-2xl bg-background/85 p-4 shadow-sm ring-1 ring-border/70">
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="font-semibold">Progreso de ruta</span>
+              <span className="font-black text-brand-accent">{percent}%</span>
             </div>
-
-            <aside className="space-y-3 rounded-2xl bg-muted/25 p-4">
-              <h3 className="font-bold tracking-tight">Qué incluye</h3>
-              <div className="grid gap-2 text-xs">
-                <div className="rounded-xl bg-background p-3 ring-1 ring-border/70"><strong>{route.courses.length}</strong> cursos</div>
-                <div className="rounded-xl bg-background p-3 ring-1 ring-border/70"><strong>{resources.length}</strong> recursos</div>
-                <div className="rounded-xl bg-background p-3 ring-1 ring-border/70"><strong>{LEARNING_LEVEL_LABELS[route.level]}</strong> nivel</div>
-              </div>
-              <div className="rounded-xl border bg-background p-3 text-xs leading-5 text-muted-foreground">
-                Vista tipo Platzi: portada, descripción, temario y clase activa. Sin comprar una plataforma ajena. Qué decepción para el capitalismo SaaS.
-              </div>
-            </aside>
+            <ProgressBar value={percent} />
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="rounded-xl bg-muted/45 p-2"><strong>{route.courses.length}</strong><br />cursos</div>
+              <div className="rounded-xl bg-muted/45 p-2"><strong>{resources.length}</strong><br />clases</div>
+              <div className="rounded-xl bg-muted/45 p-2"><strong>{completed}</strong><br />listas</div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <aside className="bg-muted/20 p-4">
+      <div className="grid min-h-[calc(100svh-260px)] lg:grid-cols-[280px_minmax(0,1fr)_340px]">
+        <aside className="border-b bg-muted/20 p-4 lg:border-b-0 lg:border-r">
+          <div className="sticky top-4 space-y-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-accent">Ruta</p>
+              <h3 className="font-black tracking-tight">Cursos</h3>
+            </div>
+            <div className="space-y-2">
+              {route.courses.map((course, courseIndex) => {
+                const courseResources = course.resources
+                const courseCompleted = courseResources.filter((resource) => byContent.get(resource.id) === 'completado').length
+                const coursePercent = pct(courseCompleted, courseResources.length)
+                const active = selectedCourse?.id === course.id
+                return (
+                  <button
+                    key={course.id}
+                    type="button"
+                    onClick={() => selectCourse(course)}
+                    className={cn(
+                      'w-full rounded-2xl p-3 text-left transition ring-1',
+                      active ? 'bg-brand-accent/15 ring-brand-accent/35' : 'bg-background ring-border/70 hover:bg-muted/55'
+                    )}
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-accent">Curso {courseIndex + 1}</span>
+                      <span className="text-[10px] text-muted-foreground">{courseCompleted}/{courseResources.length}</span>
+                    </div>
+                    <div className="line-clamp-2 text-sm font-bold">{course.title || 'Curso sin título'}</div>
+                    {course.description ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{course.description}</p> : null}
+                    <div className="mt-3"><ProgressBar value={coursePercent} /></div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </aside>
+
+        <div className="min-w-0 bg-background p-4 md:p-5">
+          {selectedResource ? (
+            <div className="mx-auto max-w-5xl space-y-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <Badge variant="outline" className="mb-2">
+                    Curso {selectedCourseIndex + 1}: {selectedCourse?.title ?? 'Curso'}
+                  </Badge>
+                  <h3 className="text-2xl font-black tracking-tight md:text-4xl">{selectedResource.title}</h3>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+                    {selectedResource.description || 'Clase sin descripción todavía.'}
+                  </p>
+                </div>
+                <Badge variant={status === 'completado' ? 'default' : 'secondary'} className="w-fit">
+                  {LEARNING_PROGRESS_LABELS[status]}
+                </Badge>
+              </div>
+
+              <div className="overflow-hidden rounded-[1.35rem] border bg-muted/30 shadow-sm">
+                {selectedResource.url ? (
+                  selectedResource.type === 'video' || selectedResource.type === 'clase' ? (
+                    <div className="aspect-video bg-black">
+                      <iframe
+                        src={selectedResource.url}
+                        title={selectedResource.title}
+                        className="size-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex min-h-80 flex-col items-center justify-center gap-3 p-8 text-center">
+                      {renderResourceIcon(selectedResource.type, 'size-12 text-brand-accent')}
+                      <h4 className="text-lg font-bold">Recurso externo</h4>
+                      <p className="max-w-sm text-sm text-muted-foreground">Abrilo en una pestaña nueva y vuelve para guardar tu avance.</p>
+                      <a
+                        href={selectedResource.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+                      >
+                        Abrir recurso <ExternalLink className="size-4" />
+                      </a>
+                    </div>
+                  )
+                ) : (
+                  <div className="min-h-80 p-6 md:p-8">
+                    <div className="mb-5 flex items-center gap-3">
+                      <div className="rounded-2xl bg-brand-accent/15 p-3 text-brand-accent">
+                        {renderResourceIcon(selectedResource.type, 'size-6')}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-accent">Clase de texto</p>
+                        <h4 className="font-bold">Contenido de la clase</h4>
+                      </div>
+                    </div>
+                    <div className="prose prose-sm max-w-none whitespace-pre-wrap text-muted-foreground dark:prose-invert">
+                      {selectedResource.description || `Este recurso es de tipo ${LEARNING_RESOURCE_TYPE_LABELS[selectedResource.type]}. Falta contenido. La interfaz ya no es el problema; ahora el culpable sería el maestro.`}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3 rounded-2xl bg-muted/25 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex gap-2">
+                  <Button variant="outline" className="rounded-full" disabled={!previousResource} onClick={() => previousResource && onSelectResource(previousResource.id)}>
+                    <ChevronLeft className="size-4" /> Anterior
+                  </Button>
+                  <Button variant="outline" className="rounded-full" disabled={!nextResource} onClick={() => nextResource && onSelectResource(nextResource.id)}>
+                    Siguiente <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button disabled={disabled} variant="outline" className="rounded-full" onClick={() => onProgress(selectedResource.id, 'en progreso')}>
+                    Guardar avance
+                  </Button>
+                  <Button disabled={disabled} className="rounded-full" onClick={() => onProgress(selectedResource.id, 'completado')}>
+                    <CheckCircle2 className="size-4" /> Marcar clase lista
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <EmptyState title="Ruta sin clases" description="Agregá cursos y clases desde Teacher Studio." compact />
+          )}
+        </div>
+
+        <aside className="border-t bg-muted/20 p-4 lg:border-l lg:border-t-0">
           <div className="sticky top-4 space-y-4">
             <div>
-              <h3 className="font-black tracking-tight">Temario</h3>
-              <p className="text-xs text-muted-foreground">Curso 1, curso 2… recursos dentro. Como debería haber sido desde el inicio.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-accent">Temario</p>
+              <h3 className="font-black tracking-tight">Clases del curso</h3>
+              <p className="text-xs text-muted-foreground">Entras a una ruta, eliges curso, luego clase. No una lista plana con botoncitos tristes.</p>
             </div>
-            <div className="space-y-3">
-              {route.courses.map((course, courseIndex) => (
-                <div key={course.id} className="rounded-2xl bg-background p-3 shadow-sm ring-1 ring-border/70">
-                  <div className="mb-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-accent">Curso {courseIndex + 1}</p>
-                    <h4 className="font-semibold">{course.title || 'Curso sin título'}</h4>
-                    {course.description ? <p className="mt-1 text-xs text-muted-foreground">{course.description}</p> : null}
-                  </div>
-                  <div className="space-y-1.5">
-                    {course.resources.map((resource) => {
-                      const resourceStatus = byContent.get(resource.id) ?? 'pendiente'
-                      return (
-                        <button
-                          key={resource.id}
-                          type="button"
-                          onClick={() => onSelectResource(resource.id)}
-                          className={cn(
-                            'flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-xs transition',
-                            selectedResourceId === resource.id ? 'bg-brand-accent/20 ring-1 ring-brand-accent/30' : 'hover:bg-muted/70'
-                          )}
-                        >
-                          {renderResourceIcon(resource.type, 'size-4 text-brand-accent')}
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate font-medium">{resource.title || LEARNING_RESOURCE_TYPE_LABELS[resource.type]}</div>
-                            <div className="truncate text-[10px] text-muted-foreground">{LEARNING_RESOURCE_TYPE_LABELS[resource.type]}{resource.duration ? ` · ${resource.duration}` : ''}</div>
-                          </div>
-                          {resourceStatus === 'completado' ? <CheckCircle2 className="size-4 text-brand-accent" /> : null}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+
+            {selectedCourse ? (
+              <div className="space-y-2">
+                {selectedCourse.resources.map((resource, resourceIndex) => {
+                  const resourceStatus = byContent.get(resource.id) ?? 'pendiente'
+                  return (
+                    <button
+                      key={resource.id}
+                      type="button"
+                      onClick={() => onSelectResource(resource.id)}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-2xl p-3 text-left text-sm transition ring-1',
+                        selectedResourceId === resource.id ? 'bg-brand-accent/15 ring-brand-accent/35' : 'bg-background ring-border/70 hover:bg-muted/55'
+                      )}
+                    >
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
+                        {resourceStatus === 'completado' ? <CheckCircle2 className="size-4 text-brand-accent" /> : resourceIndex + 1}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="line-clamp-2 font-semibold">{resource.title || LEARNING_RESOURCE_TYPE_LABELS[resource.type]}</div>
+                        <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                          {renderResourceIcon(resource.type, 'size-3')}
+                          <span>{LEARNING_RESOURCE_TYPE_LABELS[resource.type]}{resource.duration ? ` · ${resource.duration}` : ''}</span>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : null}
           </div>
         </aside>
       </div>
@@ -1056,8 +1112,6 @@ function LearningRouteCard({
   route,
   isAdmin,
   byContent,
-  disabled,
-  onProgress,
   onEdit,
   onDelete,
   onEnter,
@@ -1065,8 +1119,6 @@ function LearningRouteCard({
   route: LearningRoute
   isAdmin: boolean
   byContent: Map<string, LearningProgressStatus>
-  disabled: boolean
-  onProgress: (contentId: string, status: LearningProgressStatus) => void
   onEdit?: () => void
   onDelete?: () => void
   onEnter?: () => void
@@ -1074,73 +1126,85 @@ function LearningRouteCard({
   const resources = route.courses.flatMap((course) => course.resources)
   const completed = resources.filter((resource) => byContent.get(resource.id) === 'completado').length
   const percent = pct(completed, resources.length)
+  const previewCourses = route.courses.slice(0, 3)
 
   return (
-    <article className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/70">
-      <div className="bg-gradient-to-br from-brand-accent/30 via-brand-accent/10 to-muted p-4">
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <Badge variant="secondary" className="mb-2 bg-background/70">{route.category}</Badge>
-            <h3 className="text-lg font-black tracking-tight">{route.title}</h3>
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{route.description || 'Ruta sin descripción.'}</p>
+    <article className="group overflow-hidden rounded-[1.35rem] bg-card shadow-sm ring-1 ring-border/70 transition hover:-translate-y-0.5 hover:shadow-xl">
+      <div className="relative min-h-48 bg-gradient-to-br from-brand-accent/35 via-brand-accent/10 to-muted p-5">
+        <div className="absolute -right-10 -top-10 size-36 rounded-full bg-background/35 blur-sm" />
+        <div className="relative flex h-full flex-col justify-between gap-8">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Badge variant="secondary" className="mb-3 bg-background/75">{route.category}</Badge>
+              <h3 className="max-w-xl text-2xl font-black tracking-tight">{route.title}</h3>
+              <p className="mt-2 line-clamp-3 max-w-xl text-sm leading-6 text-muted-foreground">
+                {route.description || 'Ruta sin descripción. El admin debe vender mejor el viaje, no solo tirar archivos.'}
+              </p>
+            </div>
+            {!route.published ? <Badge variant="destructive">Draft</Badge> : null}
           </div>
-          {!route.published ? <Badge variant="destructive">Draft</Badge> : null}
-        </div>
-        <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-          <span>{route.courses.length} cursos</span>
-          <span>•</span>
-          <span>{resources.length} recursos</span>
-          <span>•</span>
-          <span>{LEARNING_LEVEL_LABELS[route.level]}</span>
-        </div>
-        {!isAdmin ? (
-          <div className="mt-3 space-y-3">
-            <ProgressBar value={percent} />
-            <Button className="w-full rounded-full" onClick={onEnter}>Entrar al curso</Button>
+
+          <div className="relative grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl bg-background/75 p-3 backdrop-blur ring-1 ring-border/60">
+              <div className="text-xl font-black">{route.courses.length}</div>
+              <div className="text-[11px] text-muted-foreground">Cursos</div>
+            </div>
+            <div className="rounded-2xl bg-background/75 p-3 backdrop-blur ring-1 ring-border/60">
+              <div className="text-xl font-black">{resources.length}</div>
+              <div className="text-[11px] text-muted-foreground">Clases</div>
+            </div>
+            <div className="rounded-2xl bg-background/75 p-3 backdrop-blur ring-1 ring-border/60">
+              <div className="text-xl font-black">{LEARNING_LEVEL_LABELS[route.level]}</div>
+              <div className="text-[11px] text-muted-foreground">Nivel</div>
+            </div>
           </div>
-        ) : null}
+        </div>
       </div>
 
-      <div className="space-y-3 p-4">
-        {route.courses.map((course, courseIndex) => (
-          <div key={course.id} className="rounded-xl border bg-background p-3">
-            <div className="mb-2 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-accent">Curso {courseIndex + 1}</p>
-                <h4 className="font-semibold">{course.title || 'Curso sin título'}</h4>
-                {course.description ? <p className="text-xs text-muted-foreground">{course.description}</p> : null}
-              </div>
-              <Badge variant="outline">{course.resources.length}</Badge>
+      <div className="space-y-4 p-4">
+        {!isAdmin ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-muted-foreground">Tu avance</span>
+              <span className="font-black text-brand-accent">{percent}%</span>
             </div>
-            <div className="space-y-1.5">
-              {course.resources.map((resource) => {
-                const status = byContent.get(resource.id) ?? 'pendiente'
-                const Icon = resource.type === 'video' || resource.type === 'clase' ? PlayCircle : resource.type === 'documento' || resource.type === 'texto' ? FileText : resource.type === 'link' ? ExternalLink : ClipboardList
-                return (
-                  <div key={resource.id} className="flex items-center gap-2 rounded-lg bg-muted/35 px-2 py-2 text-xs">
-                    <Icon className="size-4 text-brand-accent" />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium">{resource.title || LEARNING_RESOURCE_TYPE_LABELS[resource.type]}</div>
-                      <div className="truncate text-[10px] text-muted-foreground">{LEARNING_RESOURCE_TYPE_LABELS[resource.type]}{resource.duration ? ` · ${resource.duration}` : ''}</div>
-                    </div>
-                    {resource.url ? <a href={resource.url} target="_blank" rel="noreferrer" className="text-brand-accent hover:underline">Abrir</a> : null}
-                    {!isAdmin ? (
-                      <Button size="sm" variant={status === 'completado' ? 'default' : 'outline'} className="h-7 rounded-full px-3 text-[11px]" disabled={disabled} onClick={() => onProgress(resource.id, status === 'completado' ? 'completado' : 'completado')}>
-                        {status === 'completado' ? 'Listo' : 'Completar'}
-                      </Button>
-                    ) : null}
-                  </div>
-                )
-              })}
-            </div>
+            <ProgressBar value={percent} />
           </div>
-        ))}
+        ) : null}
+
+        <div className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Cursos incluidos</div>
+          {previewCourses.map((course, courseIndex) => {
+            const courseResources = course.resources.length
+            const courseCompleted = course.resources.filter((resource) => byContent.get(resource.id) === 'completado').length
+            return (
+              <div key={course.id} className="flex items-center gap-3 rounded-2xl bg-muted/35 p-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-background text-xs font-black ring-1 ring-border/70">
+                  {courseIndex + 1}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-bold">{course.title || 'Curso sin título'}</div>
+                  <div className="truncate text-xs text-muted-foreground">{courseResources} clases{!isAdmin ? ` · ${courseCompleted}/${courseResources} listas` : ''}</div>
+                </div>
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </div>
+            )
+          })}
+          {route.courses.length > previewCourses.length ? (
+            <div className="px-3 text-xs text-muted-foreground">+{route.courses.length - previewCourses.length} cursos más</div>
+          ) : null}
+        </div>
+
         {isAdmin ? (
           <div className="flex gap-2 border-t pt-3">
             <Button variant="outline" size="sm" className="flex-1 rounded-full" onClick={onEdit}><Edit3 className="size-3" /> Editar ruta</Button>
             <Button variant="outline" size="sm" className="rounded-full text-destructive hover:text-destructive" onClick={onDelete}><Trash2 className="size-3" /></Button>
           </div>
-        ) : null}
+        ) : (
+          <Button className="h-11 w-full rounded-full" onClick={onEnter}>
+            Entrar a la ruta <ChevronRight className="size-4" />
+          </Button>
+        )}
       </div>
     </article>
   )
