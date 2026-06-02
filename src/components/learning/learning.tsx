@@ -52,6 +52,7 @@ import {
 
 type FilterValue<T extends string> = 'todos' | T
 type Draft = LearningContentInput
+type LearningMode = 'student' | 'admin'
 
 const emptyDraft: Draft = {
   title: '',
@@ -86,7 +87,8 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
   const [progress, setProgress] = useState<LearningProgressSet>(initialData.progress)
   const [draft, setDraft] = useState<Draft>(emptyDraft)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(initialData.isAdmin && contents.length === 0)
+  const [mode, setMode] = useState<LearningMode>('student')
+  const [showForm, setShowForm] = useState(false)
   const [typeFilter, setTypeFilter] = useState<FilterValue<LearningType>>('todos')
   const [categoryFilter, setCategoryFilter] = useState('todos')
   const [levelFilter, setLevelFilter] = useState<FilterValue<LearningLevel>>('todos')
@@ -100,7 +102,9 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
     () => contents.filter((content) => content.published),
     [contents]
   )
-  const visibleContents = isAdmin ? contents : publishedContents
+  const isAdminMode = isAdmin && mode === 'admin'
+  const visibleContents = isAdminMode ? contents : publishedContents
+  const draftContents = useMemo(() => contents.filter((content) => !content.published), [contents])
   const categories = useMemo(
     () => Array.from(new Set(visibleContents.map((content) => content.category))).sort(),
     [visibleContents]
@@ -165,6 +169,7 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
       published: content.published,
     })
     setEditingId(content.id)
+    setMode('admin')
     setShowForm(true)
   }
 
@@ -231,14 +236,34 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
             </Badge>
             <div className="space-y-3">
               <h1 className="max-w-3xl text-4xl font-black tracking-tight md:text-5xl">
-                Aprendizaje interno, ordenado como plataforma.
+                {isAdminMode ? 'Panel docente para administrar la academia.' : 'Tu plataforma personal de aprendizaje interno.'}
               </h1>
               <p className="max-w-2xl text-base text-muted-foreground md:text-lg">
-                Cursos, talleres, manuales y recursos de la empresa con progreso personal, rutas por tema y contenido destacado.
+                {isAdminMode
+                  ? 'Creá, editá, publicá y ordená contenidos sin perder tu vista de estudiante.'
+                  : 'Cursos, talleres, manuales y recursos de la empresa con progreso personal, rutas por tema y contenido destacado.'}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              {recommendation ? (
+              {isAdmin ? (
+                <div className="flex rounded-2xl border bg-background/70 p-1 shadow-sm backdrop-blur">
+                  <Button
+                    size="lg"
+                    variant={!isAdminMode ? 'default' : 'ghost'}
+                    onClick={() => { setMode('student'); setShowForm(false) }}
+                  >
+                    <GraduationCap className="size-4" /> Soy estudiante
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant={isAdminMode ? 'default' : 'ghost'}
+                    onClick={() => setMode('admin')}
+                  >
+                    <Layers3 className="size-4" /> Soy maestro/admin
+                  </Button>
+                </div>
+              ) : null}
+              {!isAdminMode && recommendation ? (
                 <Button
                   size="lg"
                   onClick={() => setContentProgress(recommendation.id, 'en progreso')}
@@ -247,7 +272,7 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
                   <PlayCircle className="size-4" /> Continuar aprendizaje
                 </Button>
               ) : null}
-              {isAdmin ? (
+              {isAdminMode ? (
                 <Button size="lg" variant="outline" onClick={() => setShowForm((value) => !value)}>
                   <Plus className="size-4" /> Nuevo contenido
                 </Button>
@@ -272,13 +297,24 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
       </section>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard icon={<Layers3 className="size-5" />} label="Catálogo" value={`${publishedContents.length} contenidos`} hint="Cursos, talleres y recursos" />
-        <MetricCard icon={<Flame className="size-5" />} label="En progreso" value={inProgressCount.toString()} hint="Seguimiento personal" />
-        <MetricCard icon={<Award className="size-5" />} label="Completados" value={completedCount.toString()} hint={`${completionPercent}% del catálogo`} />
+        {isAdminMode ? (
+          <>
+            <MetricCard icon={<Layers3 className="size-5" />} label="Biblioteca total" value={`${contents.length} contenidos`} hint="Publicado + borrador" />
+            <MetricCard icon={<Flame className="size-5" />} label="Borradores" value={draftContents.length.toString()} hint="Pendientes de publicar" />
+            <MetricCard icon={<Award className="size-5" />} label="Publicados" value={publishedContents.length.toString()} hint="Visibles para estudiantes" />
+          </>
+        ) : (
+          <>
+            <MetricCard icon={<Layers3 className="size-5" />} label="Catálogo" value={`${publishedContents.length} contenidos`} hint="Cursos, talleres y recursos" />
+            <MetricCard icon={<Flame className="size-5" />} label="En progreso" value={inProgressCount.toString()} hint="Seguimiento personal" />
+            <MetricCard icon={<Award className="size-5" />} label="Completados" value={completedCount.toString()} hint={`${completionPercent}% del catálogo`} />
+          </>
+        )}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <main className="space-y-6">
+          {!isAdminMode ? (
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -304,8 +340,21 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
               )}
             </CardContent>
           </Card>
+          ) : (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Layers3 className="size-5 text-primary" /> Panel docente</CardTitle>
+                <CardDescription>Este modo es para construir la academia. Tu progreso como alumno sigue intacto en “Soy estudiante”.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 md:grid-cols-3">
+                <MiniStat label="Total" value={contents.length} />
+                <MiniStat label="Publicados" value={publishedContents.length} />
+                <MiniStat label="Borradores" value={draftContents.length} />
+              </CardContent>
+            </Card>
+          )}
 
-          {isAdmin && showForm ? (
+          {isAdminMode && showForm ? (
             <AdminContentForm
               draft={draft}
               editingId={editingId}
@@ -320,8 +369,8 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
             <CardHeader>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                  <CardTitle>Catálogo de aprendizaje</CardTitle>
-                  <CardDescription>Filtrá, abrí recursos y marcá tu avance.</CardDescription>
+                  <CardTitle>{isAdminMode ? 'Biblioteca docente' : 'Catálogo de aprendizaje'}</CardTitle>
+                  <CardDescription>{isAdminMode ? 'Administrá contenidos, borradores y publicaciones.' : 'Filtrá, abrí recursos y marcá tu avance.'}</CardDescription>
                 </div>
                 <div className="relative min-w-0 lg:w-80">
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -360,7 +409,7 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
                     <LearningCourseCard
                       key={content.id}
                       content={content}
-                      isAdmin={isAdmin}
+                      isAdmin={isAdminMode}
                       status={byContent.get(content.id) ?? 'pendiente'}
                       disabled={isPending}
                       onEdit={() => editContent(content)}
@@ -400,14 +449,15 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
 
           <Card className="bg-muted/40">
             <CardHeader>
-              <CardTitle className="text-lg">Cómo se siente esto</CardTitle>
-              <CardDescription>No es un folder con links. Es una plataforma interna de formación.</CardDescription>
+              <CardTitle className="text-lg">{isAdminMode ? 'Doble rol' : 'Cómo se siente esto'}</CardTitle>
+              <CardDescription>{isAdminMode ? 'Admins también pueden ser alumnos sin mezclar tableros.' : 'No es un folder con links. Es una plataforma interna de formación.'}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>• Home con progreso y recomendación.</p>
               <p>• Catálogo con filtros como LMS.</p>
               <p>• Rutas por categoría para ordenar capacitaciones.</p>
               <p>• Admins publican; usuarios consumen y avanzan.</p>
+              <p>• Si sos admin, cambiás de sombrero sin cambiar de cuenta.</p>
             </CardContent>
           </Card>
         </aside>
