@@ -1,9 +1,5 @@
-import { LearningLoader } from './learning-loader'
-import { requireApp } from '@/lib/permissions/require-app'
-import { getLearningHubData } from '@/lib/learning/actions'
+import { redirect } from 'next/navigation'
 
-export default async function LearningPage() {
-  await requireApp('learning')
-  const initialData = await getLearningHubData()
-  return <LearningLoader initialData={initialData} />
+export default function LearningPage() {
+  redirect('/learning')
 }

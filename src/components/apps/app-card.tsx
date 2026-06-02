@@ -82,6 +82,9 @@ export function AppCard({ app }: { app: AppDefinition }) {
     detail: 'Herramienta interna',
   }
 
+  const platformHref = app.id === 'ideas-board' ? '/foro' : app.id === 'learning' ? '/learning' : app.href
+  const opensPlatform = app.id === 'ideas-board' || app.id === 'learning'
+
   const card = (
     <Card
       className={cn(
@@ -92,23 +95,25 @@ export function AppCard({ app }: { app: AppDefinition }) {
       )}
     >
       <div className={cn('absolute inset-x-0 top-0 h-24 bg-gradient-to-br opacity-80', meta.accent)} />
-      <div className="absolute right-4 top-4 rounded-full border bg-background/70 p-2 shadow-sm backdrop-blur transition group-hover:scale-105">
-        <Icon className="size-5" />
-      </div>
-      <CardHeader className="relative min-h-28 justify-end">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="bg-background/75 backdrop-blur">
-            {meta.eyebrow}
-          </Badge>
-          {app.status === 'coming-soon' ? (
-            <Badge variant="secondary">
-              <Clock3 className="size-3" /> Próximamente
+      <CardHeader className="relative min-h-28 justify-between">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 pr-14">
+            <Badge variant="secondary" className="bg-background/75 backdrop-blur">
+              {meta.eyebrow}
             </Badge>
-          ) : (
-            <Badge className="bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
-              <CheckCircle2 className="size-3" /> Activa
-            </Badge>
-          )}
+            {app.status === 'coming-soon' ? (
+              <Badge variant="secondary">
+                <Clock3 className="size-3" /> Próximamente
+              </Badge>
+            ) : (
+              <Badge className="bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
+                <CheckCircle2 className="size-3" /> Activa
+              </Badge>
+            )}
+          </div>
+          <div className="absolute right-4 top-4 rounded-full border bg-background/80 p-2 shadow-sm backdrop-blur transition group-hover:scale-105">
+            <Icon className="size-5" />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="relative space-y-4">
@@ -123,7 +128,7 @@ export function AppCard({ app }: { app: AppDefinition }) {
           </span>
           {isAvailable ? (
             <span className="inline-flex items-center gap-1 font-medium text-foreground">
-              Abrir <ArrowUpRight className="size-3.5 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              {opensPlatform ? 'Abrir plataforma' : 'Abrir'} <ArrowUpRight className="size-3.5 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </span>
           ) : null}
         </div>
@@ -136,7 +141,12 @@ export function AppCard({ app }: { app: AppDefinition }) {
   }
 
   return (
-    <Link href={app.href} className="block h-full">
+    <Link
+      href={platformHref}
+      className="block h-full"
+      target={opensPlatform ? '_blank' : undefined}
+      rel={opensPlatform ? 'noreferrer' : undefined}
+    >
       {card}
     </Link>
   )
