@@ -17,11 +17,13 @@ import {
   emptyProgressSet,
   learningContentInputSchema,
   learningLibrarySchema,
+  learningRouteInputSchema,
   learningProgressSetSchema,
   progressInputSchema,
   type LearningContent,
   type LearningLibrary,
   type LearningProgressSet,
+  type LearningRoute,
 } from './schema'
 
 type SessionContext = {
@@ -81,6 +83,7 @@ async function readLibrary(orgId: string): Promise<LearningLibrary> {
 
   return {
     contents: [...parsed.data.contents].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    routes: [...parsed.data.routes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
   }
 }
 
@@ -166,7 +169,7 @@ export async function saveLearningContent(input: unknown): Promise<ActionResult<
     ? library.contents.map((item) => (item.id === content.id ? content : item))
     : [content, ...library.contents]
 
-  await writeLibrary(ctx.orgId, { contents })
+  await writeLibrary(ctx.orgId, { ...library, contents })
   revalidatePath('/app/tools/learning')
 
   return { ok: true, content }
@@ -178,7 +181,63 @@ export async function deleteLearningContent(contentId: string): Promise<ActionRe
 
   const library = await readLibrary(ctx.orgId)
   await writeLibrary(ctx.orgId, {
+    ...library,
     contents: library.contents.filter((content) => content.id !== contentId),
+  })
+  revalidatePath('/app/tools/learning')
+
+  return { ok: true }
+}
+
+
+export async function saveLearningRoute(input: unknown): Promise<ActionResult<{ route: LearningRoute }>> {
+  const ctx = await getSessionContext()
+  if (!canManage(ctx)) return { ok: false, error: 'No tenés permiso para administrar rutas' }
+
+  const parsed = learningRouteInputSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+  }
+
+  const now = new Date().toISOString()
+  const library = await readLibrary(ctx.orgId)
+  const existing = parsed.data.id
+    ? library.routes.find((route) => route.id === parsed.data.id)
+    : undefined
+
+  const route: LearningRoute = {
+    ...parsed.data,
+    id: parsed.data.id ?? randomUUID(),
+    courses: parsed.data.courses.map((course) => ({
+      ...course,
+      id: course.id ?? randomUUID(),
+      resources: course.resources.map((resource) => ({
+        ...resource,
+        id: resource.id ?? randomUUID(),
+      })),
+    })),
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  }
+
+  const routes = existing
+    ? library.routes.map((item) => (item.id === route.id ? route : item))
+    : [route, ...library.routes]
+
+  await writeLibrary(ctx.orgId, { ...library, routes })
+  revalidatePath('/app/tools/learning')
+
+  return { ok: true, route }
+}
+
+export async function deleteLearningRoute(routeId: string): Promise<ActionResult> {
+  const ctx = await getSessionContext()
+  if (!canManage(ctx)) return { ok: false, error: 'No tenés permiso para eliminar rutas' }
+
+  const library = await readLibrary(ctx.orgId)
+  await writeLibrary(ctx.orgId, {
+    ...library,
+    routes: library.routes.filter((route) => route.id !== routeId),
   })
   revalidatePath('/app/tools/learning')
 
@@ -194,7 +253,12 @@ export async function updateLearningProgress(input: unknown): Promise<ActionResu
 
   const library = await readLibrary(ctx.orgId)
   const content = library.contents.find((item) => item.id === parsed.data.contentId)
-  if (!content || !content.published) return { ok: false, error: 'Contenido no disponible' }
+  const resource = library.routes
+    .filter((route) => route.published)
+    .flatMap((route) => route.courses)
+    .flatMap((course) => course.resources)
+    .find((item) => item.id === parsed.data.contentId)
+  if ((!content || !content.published) && !resource) return { ok: false, error: 'Contenido no disponible' }
 
   const current = await readProgress(ctx.userId)
   const entry = {

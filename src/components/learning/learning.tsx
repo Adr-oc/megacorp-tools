@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Edit3,
   ExternalLink,
+  FileText,
   Filter,
   GraduationCap,
   Layers3,
@@ -33,19 +34,28 @@ import {
   LEARNING_LEVEL_LABELS,
   LEARNING_LEVELS,
   LEARNING_PROGRESS_LABELS,
+  LEARNING_RESOURCE_TYPE_LABELS,
+  LEARNING_RESOURCE_TYPES,
   LEARNING_PROGRESS_STATUSES,
   LEARNING_TYPE_LABELS,
   LEARNING_TYPES,
   type LearningContent,
   type LearningContentInput,
+  type LearningCourse,
   type LearningLevel,
+  type LearningResource,
+  type LearningResourceType,
+  type LearningRoute,
+  type LearningRouteInput,
   type LearningProgressSet,
   type LearningProgressStatus,
   type LearningType,
 } from '@/lib/learning/schema'
 import {
   deleteLearningContent,
+  deleteLearningRoute,
   saveLearningContent,
+  saveLearningRoute,
   updateLearningProgress,
   type LearningHubData,
 } from '@/lib/learning/actions'
@@ -53,6 +63,7 @@ import { cn } from '@/lib/utils'
 
 type FilterValue<T extends string> = 'todos' | T
 type Draft = LearningContentInput
+type RouteDraft = LearningRouteInput
 type LearningMode = 'student' | 'admin'
 
 const emptyDraft: Draft = {
@@ -64,6 +75,22 @@ const emptyDraft: Draft = {
   duration: '',
   level: 'básico',
   published: true,
+}
+
+const emptyRouteDraft: RouteDraft = {
+  title: '',
+  description: '',
+  category: '',
+  level: 'básico',
+  published: true,
+  courses: [
+    {
+      title: '',
+      description: '',
+      level: 'básico',
+      resources: [{ title: '', type: 'video', description: '', url: '', duration: '', required: true }],
+    },
+  ],
 }
 
 const TYPE_LABEL_FALLBACK: Record<LearningType, string> = {
@@ -91,11 +118,15 @@ function progressPercent(status: LearningProgressStatus) {
 
 export function Learning({ initialData }: { initialData: LearningHubData }) {
   const [contents, setContents] = useState<LearningContent[]>(initialData.library.contents)
+  const [routes, setRoutes] = useState<LearningRoute[]>(initialData.library.routes)
   const [progress, setProgress] = useState<LearningProgressSet>(initialData.progress)
   const [draft, setDraft] = useState<Draft>(emptyDraft)
+  const [routeDraft, setRouteDraft] = useState<RouteDraft>(emptyRouteDraft)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingRouteId, setEditingRouteId] = useState<string | null>(null)
   const [mode, setMode] = useState<LearningMode>('student')
   const [showForm, setShowForm] = useState(false)
+  const [showRouteForm, setShowRouteForm] = useState(false)
   const [typeFilter, setTypeFilter] = useState<FilterValue<LearningType>>('todos')
   const [categoryFilter, setCategoryFilter] = useState('todos')
   const [levelFilter, setLevelFilter] = useState<FilterValue<LearningLevel>>('todos')
@@ -106,6 +137,8 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
   const isAdmin = initialData.isAdmin
   const isAdminMode = isAdmin && mode === 'admin'
   const byContent = useMemo(() => progressMap(progress), [progress])
+  const publishedRoutes = useMemo(() => routes.filter((route) => route.published), [routes])
+  const draftRoutes = useMemo(() => routes.filter((route) => !route.published), [routes])
   const publishedContents = useMemo(() => contents.filter((content) => content.published), [contents])
   const draftContents = useMemo(() => contents.filter((content) => !content.published), [contents])
   const visibleContents = isAdminMode ? contents : publishedContents
@@ -114,9 +147,12 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
     [visibleContents]
   )
 
-  const completedCount = publishedContents.filter((content) => byContent.get(content.id) === 'completado').length
-  const inProgressCount = publishedContents.filter((content) => byContent.get(content.id) === 'en progreso').length
-  const completionPercent = pct(completedCount, publishedContents.length)
+  const publishedResources = publishedRoutes.flatMap((route) => route.courses).flatMap((course) => course.resources)
+  const legacyCompletedCount = publishedContents.filter((content) => byContent.get(content.id) === 'completado').length
+  const resourceCompletedCount = publishedResources.filter((resource) => byContent.get(resource.id) === 'completado').length
+  const completedCount = legacyCompletedCount + resourceCompletedCount
+  const inProgressCount = publishedContents.filter((content) => byContent.get(content.id) === 'en progreso').length + publishedResources.filter((resource) => byContent.get(resource.id) === 'en progreso').length
+  const completionPercent = pct(completedCount, publishedContents.length + publishedResources.length)
   const activeContents = publishedContents.filter((content) => byContent.get(content.id) === 'en progreso')
   const recommendation = activeContents[0] ?? publishedContents.find((content) => byContent.get(content.id) !== 'completado')
 
@@ -144,6 +180,54 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
     setDraft(emptyDraft)
     setEditingId(null)
     setShowForm(false)
+  }
+
+  function editRoute(route: LearningRoute) {
+    setRouteDraft({
+      id: route.id,
+      title: route.title,
+      description: route.description,
+      category: route.category,
+      level: route.level,
+      published: route.published,
+      courses: route.courses,
+    })
+    setEditingRouteId(route.id)
+    setMode('admin')
+    setShowRouteForm(true)
+    setShowForm(false)
+  }
+
+  function saveRoute() {
+    startTransition(async () => {
+      const result = await saveLearningRoute(routeDraft)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      setRoutes((current) => {
+        const exists = current.some((route) => route.id === result.route.id)
+        return exists
+          ? current.map((route) => (route.id === result.route.id ? result.route : route))
+          : [result.route, ...current]
+      })
+      toast.success(editingRouteId ? 'Ruta actualizada' : 'Ruta creada')
+      setRouteDraft(emptyRouteDraft)
+      setEditingRouteId(null)
+      setShowRouteForm(false)
+    })
+  }
+
+  function removeRoute(routeId: string) {
+    startTransition(async () => {
+      const result = await deleteLearningRoute(routeId)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      setRoutes((current) => current.filter((route) => route.id !== routeId))
+      toast.success('Ruta eliminada')
+    })
   }
 
   function editContent(content: LearningContent) {
@@ -223,7 +307,10 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
           unreadCount={inProgressCount}
           onModeChange={(next) => {
             setMode(next)
-            if (next === 'student') setShowForm(false)
+            if (next === 'student') {
+              setShowForm(false)
+              setShowRouteForm(false)
+            }
           }}
         />
 
@@ -236,35 +323,66 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
               isAdminMode={isAdminMode}
               onCreate={() => {
                 setMode('admin')
-                setShowForm((value) => !value)
+                setShowRouteForm((value) => !value)
+                setShowForm(false)
               }}
             />
 
             {isAdminMode ? (
               <AdminDashboard
                 contents={contents}
-                publishedCount={publishedContents.length}
-                draftCount={draftContents.length}
+                routes={routes}
+                publishedCount={publishedContents.length + publishedRoutes.length}
+                draftCount={draftContents.length + draftRoutes.length}
+                routeDraft={routeDraft}
+                editingRouteId={editingRouteId}
+                showRouteForm={showRouteForm}
                 showForm={showForm}
                 draft={draft}
                 editingId={editingId}
                 disabled={isPending}
                 onDraftChange={setDraft}
+                onRouteDraftChange={setRouteDraft}
                 onSave={saveContent}
+                onSaveRoute={saveRoute}
                 onCancel={resetForm}
+                onCancelRoute={() => { setRouteDraft(emptyRouteDraft); setEditingRouteId(null); setShowRouteForm(false) }}
+                onEditRoute={editRoute}
+                onDeleteRoute={removeRoute}
               />
             ) : (
               <StudentHero
                 recommendation={recommendation}
                 activeContents={activeContents}
                 completedCount={completedCount}
-                totalCount={publishedContents.length}
+                totalCount={publishedContents.length + publishedResources.length}
                 completionPercent={completionPercent}
                 isPending={isPending}
                 byContent={byContent}
                 onProgress={setContentProgress}
               />
             )}
+
+            {!isAdminMode && publishedRoutes.length > 0 ? (
+              <section className="rounded-[1rem] bg-background p-4 shadow-sm ring-1 ring-border/70">
+                <div className="mb-4">
+                  <h2 className="text-lg font-bold tracking-tight">Rutas de aprendizaje</h2>
+                  <p className="text-xs text-muted-foreground">RUTAS → CURSOS → RECURSOS. Ahora sí, una estructura con columna vertebral.</p>
+                </div>
+                <div className="grid gap-4 xl:grid-cols-2">
+                  {publishedRoutes.map((route) => (
+                    <LearningRouteCard
+                      key={route.id}
+                      route={route}
+                      isAdmin={false}
+                      byContent={byContent}
+                      disabled={isPending}
+                      onProgress={setContentProgress}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             <section className="rounded-[1rem] bg-background p-4 shadow-sm ring-1 ring-border/70">
               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -484,35 +602,70 @@ function StudentHero({
 
 function AdminDashboard({
   contents,
+  routes,
   publishedCount,
   draftCount,
   showForm,
+  showRouteForm,
   draft,
+  routeDraft,
   editingId,
+  editingRouteId,
   disabled,
   onDraftChange,
+  onRouteDraftChange,
   onSave,
+  onSaveRoute,
   onCancel,
+  onCancelRoute,
+  onEditRoute,
+  onDeleteRoute,
 }: {
   contents: LearningContent[]
+  routes: LearningRoute[]
   publishedCount: number
   draftCount: number
   showForm: boolean
+  showRouteForm: boolean
   draft: Draft
+  routeDraft: RouteDraft
   editingId: string | null
+  editingRouteId: string | null
   disabled: boolean
   onDraftChange: (draft: Draft) => void
+  onRouteDraftChange: (draft: RouteDraft) => void
   onSave: () => void
+  onSaveRoute: () => void
   onCancel: () => void
+  onCancelRoute: () => void
+  onEditRoute: (route: LearningRoute) => void
+  onDeleteRoute: (routeId: string) => void
 }) {
+  const courseCount = routes.reduce((sum, route) => sum + route.courses.length, 0)
+  const resourceCount = routes.reduce(
+    (sum, route) => sum + route.courses.reduce((inner, course) => inner + course.resources.length, 0),
+    0
+  )
+
   return (
     <section className="space-y-4 rounded-[1rem] bg-background p-4 shadow-sm ring-1 ring-border/70">
-      <div className="grid gap-3 md:grid-cols-3">
-        <AdminMetric label="Total content" value={contents.length} hint="Biblioteca completa" />
-        <AdminMetric label="Published" value={publishedCount} hint="Visible para alumnos" />
-        <AdminMetric label="Drafts" value={draftCount} hint="Solo docentes" />
+      <div className="grid gap-3 md:grid-cols-4">
+        <AdminMetric label="Rutas" value={routes.length} hint="Programas completos" />
+        <AdminMetric label="Cursos" value={courseCount} hint="Dentro de rutas" />
+        <AdminMetric label="Recursos" value={resourceCount + contents.length} hint="Videos, texto, quizzes" />
+        <AdminMetric label="Published" value={publishedCount} hint={`${draftCount} borradores`} />
       </div>
-      {showForm ? (
+
+      {showRouteForm ? (
+        <RouteBuilder
+          draft={routeDraft}
+          editingRouteId={editingRouteId}
+          disabled={disabled}
+          onDraftChange={onRouteDraftChange}
+          onSave={onSaveRoute}
+          onCancel={onCancelRoute}
+        />
+      ) : showForm ? (
         <AdminContentForm
           draft={draft}
           editingId={editingId}
@@ -523,10 +676,255 @@ function AdminDashboard({
         />
       ) : (
         <div className="rounded-2xl border border-dashed bg-brand-accent/5 p-5 text-sm text-muted-foreground">
-          Estás en modo maestro. Administra contenido aquí; cambia a “My courses” para vivir la experiencia de estudiante.
+          Estás en modo maestro. La estructura nueva es <strong>RUTAS → CURSOS → RECURSOS</strong>. El admin puede crear contenido aquí y cambiar a “My courses” para consumir cursos como estudiante.
         </div>
       )}
+
+      {routes.length > 0 ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {routes.map((route) => (
+            <LearningRouteCard
+              key={route.id}
+              route={route}
+              isAdmin
+              byContent={new Map()}
+              disabled={disabled}
+              onProgress={() => undefined}
+              onEdit={() => onEditRoute(route)}
+              onDelete={() => onDeleteRoute(route.id)}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
+  )
+}
+
+function RouteBuilder({
+  draft,
+  editingRouteId,
+  disabled,
+  onDraftChange,
+  onSave,
+  onCancel,
+}: {
+  draft: RouteDraft
+  editingRouteId: string | null
+  disabled: boolean
+  onDraftChange: (draft: RouteDraft) => void
+  onSave: () => void
+  onCancel: () => void
+}) {
+  function updateCourse(index: number, next: Partial<LearningCourse>) {
+    onDraftChange({
+      ...draft,
+      courses: draft.courses.map((course, courseIndex) => courseIndex === index ? { ...course, ...next } : course),
+    })
+  }
+
+  function updateResource(courseIndex: number, resourceIndex: number, next: Partial<LearningResource>) {
+    onDraftChange({
+      ...draft,
+      courses: draft.courses.map((course, index) => index === courseIndex ? {
+        ...course,
+        resources: course.resources.map((resource, innerIndex) => innerIndex === resourceIndex ? { ...resource, ...next } : resource),
+      } : course),
+    })
+  }
+
+  function addCourse() {
+    onDraftChange({
+      ...draft,
+      courses: [...draft.courses, { title: '', description: '', level: draft.level, resources: [] }],
+    })
+  }
+
+  function addResource(courseIndex: number, type: LearningResourceType = 'video') {
+    onDraftChange({
+      ...draft,
+      courses: draft.courses.map((course, index) => index === courseIndex ? {
+        ...course,
+        resources: [...course.resources, { title: '', type, description: '', url: '', duration: '', required: true }],
+      } : course),
+    })
+  }
+
+  function removeCourse(courseIndex: number) {
+    onDraftChange({ ...draft, courses: draft.courses.filter((_, index) => index !== courseIndex) })
+  }
+
+  function removeResource(courseIndex: number, resourceIndex: number) {
+    onDraftChange({
+      ...draft,
+      courses: draft.courses.map((course, index) => index === courseIndex ? {
+        ...course,
+        resources: course.resources.filter((_, innerIndex) => innerIndex !== resourceIndex),
+      } : course),
+    })
+  }
+
+  return (
+    <div className="rounded-[1rem] border border-brand-accent/25 bg-background shadow-sm">
+      <div className="flex flex-col gap-3 border-b px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-brand-accent">{editingRouteId ? 'Editando ruta' : 'Nueva ruta'}</p>
+          <h3 className="text-lg font-bold tracking-tight">Constructor académico</h3>
+          <p className="text-xs text-muted-foreground">Ruta → cursos → recursos: videos, texto, clases, documentos, links y quizzes.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={addCourse}>+ Curso</Button>
+          <Button onClick={onSave} disabled={disabled} className="rounded-full">{disabled ? 'Guardando…' : 'Guardar ruta'}</Button>
+          <Button variant="outline" onClick={onCancel} disabled={disabled} className="rounded-full">Cancelar</Button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="space-y-4">
+          <input value={draft.title} onChange={(event) => onDraftChange({ ...draft, title: event.target.value })} placeholder="Nombre de la ruta" className="w-full border-0 bg-transparent text-4xl font-black tracking-tight outline-none placeholder:text-muted-foreground/45" />
+          <textarea value={draft.description} onChange={(event) => onDraftChange({ ...draft, description: event.target.value })} placeholder="Qué aprenderá el estudiante en esta ruta…" className="min-h-24 w-full resize-none rounded-2xl border bg-muted/30 p-3 text-sm outline-none focus:border-brand-accent" />
+
+          {draft.courses.map((course, courseIndex) => (
+            <div key={course.id ?? `course-${courseIndex}`} className="rounded-2xl border bg-card p-4 shadow-sm">
+              <div className="mb-3 flex items-start gap-2">
+                <div className="mt-1 rounded-full bg-brand-accent/15 px-2 py-1 text-xs font-bold text-brand-accent">Curso {courseIndex + 1}</div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Input value={course.title} onChange={(event) => updateCourse(courseIndex, { title: event.target.value })} placeholder="Título del curso" />
+                  <textarea value={course.description} onChange={(event) => updateCourse(courseIndex, { description: event.target.value })} placeholder="Descripción corta del curso" className="min-h-16 w-full resize-none rounded-xl border bg-background p-2 text-xs outline-none focus:border-brand-accent" />
+                </div>
+                <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => removeCourse(courseIndex)}><Trash2 className="size-4" /></Button>
+              </div>
+
+              <div className="space-y-2">
+                {course.resources.map((resource, resourceIndex) => (
+                  <div key={resource.id ?? `resource-${courseIndex}-${resourceIndex}`} className="grid gap-2 rounded-xl bg-muted/35 p-3 md:grid-cols-[120px_minmax(0,1fr)_150px_auto] md:items-center">
+                    <NativeSelect value={resource.type} onChange={(value) => updateResource(courseIndex, resourceIndex, { type: value as LearningResourceType })}>
+                      {LEARNING_RESOURCE_TYPES.map((type) => <option key={type} value={type}>{LEARNING_RESOURCE_TYPE_LABELS[type]}</option>)}
+                    </NativeSelect>
+                    <Input value={resource.title} onChange={(event) => updateResource(courseIndex, resourceIndex, { title: event.target.value })} placeholder="Título del recurso" />
+                    <Input value={resource.duration ?? ''} onChange={(event) => updateResource(courseIndex, resourceIndex, { duration: event.target.value })} placeholder="Duración" />
+                    <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => removeResource(courseIndex, resourceIndex)}><Trash2 className="size-4" /></Button>
+                    <textarea value={resource.description} onChange={(event) => updateResource(courseIndex, resourceIndex, { description: event.target.value })} placeholder="Texto, instrucciones o resumen de la clase" className="min-h-16 rounded-xl border bg-background p-2 text-xs outline-none focus:border-brand-accent md:col-span-2" />
+                    <Input value={resource.url ?? ''} onChange={(event) => updateResource(courseIndex, resourceIndex, { url: event.target.value })} placeholder="https:// video/doc/link" className="md:col-span-2" />
+                  </div>
+                ))}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {LEARNING_RESOURCE_TYPES.map((type) => (
+                    <Button key={type} type="button" variant="outline" size="sm" className="rounded-full" onClick={() => addResource(courseIndex, type)}>
+                      + {LEARNING_RESOURCE_TYPE_LABELS[type]}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <aside className="space-y-4 rounded-2xl bg-muted/25 p-4">
+          <Field label="Categoría">
+            <Input value={draft.category} onChange={(event) => onDraftChange({ ...draft, category: event.target.value })} placeholder="Onboarding, Ventas, Producto…" />
+          </Field>
+          <Field label="Nivel">
+            <NativeSelect value={draft.level} onChange={(value) => onDraftChange({ ...draft, level: value as LearningLevel })}>
+              {LEARNING_LEVELS.map((level) => <option key={level} value={level}>{LEARNING_LEVEL_LABELS[level]}</option>)}
+            </NativeSelect>
+          </Field>
+          <label className="flex items-center justify-between rounded-xl border bg-background px-3 py-2 text-sm">
+            <span>Publicado</span>
+            <input type="checkbox" checked={draft.published} onChange={(event) => onDraftChange({ ...draft, published: event.target.checked })} className="accent-[var(--brand-accent)]" />
+          </label>
+          <div className="rounded-xl border bg-background p-3 text-xs text-muted-foreground">
+            Este bloque separa el rol de maestro del rol de estudiante. Mismo usuario, dos sombreros. No magia. Solo orden.
+          </div>
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+function LearningRouteCard({
+  route,
+  isAdmin,
+  byContent,
+  disabled,
+  onProgress,
+  onEdit,
+  onDelete,
+}: {
+  route: LearningRoute
+  isAdmin: boolean
+  byContent: Map<string, LearningProgressStatus>
+  disabled: boolean
+  onProgress: (contentId: string, status: LearningProgressStatus) => void
+  onEdit?: () => void
+  onDelete?: () => void
+}) {
+  const resources = route.courses.flatMap((course) => course.resources)
+  const completed = resources.filter((resource) => byContent.get(resource.id) === 'completado').length
+  const percent = pct(completed, resources.length)
+
+  return (
+    <article className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/70">
+      <div className="bg-gradient-to-br from-brand-accent/30 via-brand-accent/10 to-muted p-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <Badge variant="secondary" className="mb-2 bg-background/70">{route.category}</Badge>
+            <h3 className="text-lg font-black tracking-tight">{route.title}</h3>
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{route.description || 'Ruta sin descripción.'}</p>
+          </div>
+          {!route.published ? <Badge variant="destructive">Draft</Badge> : null}
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+          <span>{route.courses.length} cursos</span>
+          <span>•</span>
+          <span>{resources.length} recursos</span>
+          <span>•</span>
+          <span>{LEARNING_LEVEL_LABELS[route.level]}</span>
+        </div>
+        {!isAdmin ? <div className="mt-3"><ProgressBar value={percent} /></div> : null}
+      </div>
+
+      <div className="space-y-3 p-4">
+        {route.courses.map((course, courseIndex) => (
+          <div key={course.id} className="rounded-xl border bg-background p-3">
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-accent">Curso {courseIndex + 1}</p>
+                <h4 className="font-semibold">{course.title || 'Curso sin título'}</h4>
+                {course.description ? <p className="text-xs text-muted-foreground">{course.description}</p> : null}
+              </div>
+              <Badge variant="outline">{course.resources.length}</Badge>
+            </div>
+            <div className="space-y-1.5">
+              {course.resources.map((resource) => {
+                const status = byContent.get(resource.id) ?? 'pendiente'
+                const Icon = resource.type === 'video' || resource.type === 'clase' ? PlayCircle : resource.type === 'documento' || resource.type === 'texto' ? FileText : resource.type === 'link' ? ExternalLink : ClipboardList
+                return (
+                  <div key={resource.id} className="flex items-center gap-2 rounded-lg bg-muted/35 px-2 py-2 text-xs">
+                    <Icon className="size-4 text-brand-accent" />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">{resource.title || LEARNING_RESOURCE_TYPE_LABELS[resource.type]}</div>
+                      <div className="truncate text-[10px] text-muted-foreground">{LEARNING_RESOURCE_TYPE_LABELS[resource.type]}{resource.duration ? ` · ${resource.duration}` : ''}</div>
+                    </div>
+                    {resource.url ? <a href={resource.url} target="_blank" rel="noreferrer" className="text-brand-accent hover:underline">Abrir</a> : null}
+                    {!isAdmin ? (
+                      <Button size="sm" variant={status === 'completado' ? 'default' : 'outline'} className="h-7 rounded-full px-3 text-[11px]" disabled={disabled} onClick={() => onProgress(resource.id, status === 'completado' ? 'completado' : 'completado')}>
+                        {status === 'completado' ? 'Listo' : 'Completar'}
+                      </Button>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+        {isAdmin ? (
+          <div className="flex gap-2 border-t pt-3">
+            <Button variant="outline" size="sm" className="flex-1 rounded-full" onClick={onEdit}><Edit3 className="size-3" /> Editar ruta</Button>
+            <Button variant="outline" size="sm" className="rounded-full text-destructive hover:text-destructive" onClick={onDelete}><Trash2 className="size-3" /></Button>
+          </div>
+        ) : null}
+      </div>
+    </article>
   )
 }
 
