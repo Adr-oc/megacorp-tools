@@ -12,6 +12,7 @@ import {
   MessageSquareText,
   NotebookTabs,
   GraduationCap,
+  Trophy,
 } from 'lucide-react'
 import type { AppDefinition, AppRole } from './types'
 
@@ -148,6 +149,15 @@ export const apps: AppDefinition[] = [
     description: 'Biblioteca de aprendizaje con cursos, materiales y progreso por contenido.',
     icon: GraduationCap,
     href: '/app/tools/learning',
+    requiredRoles: ['member', 'admin', 'owner'],
+    status: 'available',
+  },
+  {
+    id: 'learning-stats',
+    name: 'Learning Stats',
+    description: 'Ranking semanal, mensual, rachas y XP. Aprende en LearnHouse, compite acá.',
+    icon: Trophy,
+    href: '/app/tools/learning-stats',
     requiredRoles: ['member', 'admin', 'owner'],
     status: 'available',
   },
