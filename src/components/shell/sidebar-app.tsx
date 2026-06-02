@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft, Info } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Info } from 'lucide-react'
 import type { AppDefinition } from '@/lib/apps/types'
 import { SidebarSection } from './sidebar-section'
 
@@ -29,6 +29,26 @@ export function SidebarApp({ app }: Props) {
           <span>{app?.description ?? 'Workspace abierto'}</span>
         </div>
       </SidebarSection>
+
+      {app?.sidebarModules?.map((module) => (
+        <SidebarSection key={module.label} label={module.label}>
+          <div className="space-y-1">
+            {module.items.map((item) => (
+              <a
+                key={item.label}
+                href={item.href ?? '#'}
+                className="group flex items-start gap-2 rounded-md px-2.5 py-2 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 transition group-hover:translate-x-0.5" />
+                <span>
+                  <span className="block font-medium text-foreground">{item.label}</span>
+                  {item.description ? <span className="block leading-5">{item.description}</span> : null}
+                </span>
+              </a>
+            ))}
+          </div>
+        </SidebarSection>
+      ))}
     </div>
   )
 }

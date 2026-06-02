@@ -1,26 +1,22 @@
 'use client'
 
 import { useEffect, useMemo, useState, useTransition, type ComponentType } from 'react'
+import type { PartialBlock } from '@blocknote/core'
+import { BlockNoteViewRaw, useCreateBlockNote } from '@blocknote/react'
+import '@blocknote/core/style.css'
+import '@blocknote/react/style.css'
 import {
   Archive,
   BookOpen,
-  CheckSquare,
   Copy,
   FileText,
-  GripVertical,
   Hash,
-  Heading2,
-  Highlighter,
-  ListChecks,
-  Minus,
-  PanelLeftClose,
   Plus,
   Save,
   Search,
   Sparkles,
   Star,
   Tags,
-  Type,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -44,13 +40,10 @@ type DraftPage = {
   content: string
 }
 
-type BlockType = 'paragraph' | 'heading' | 'todo' | 'callout' | 'divider'
-
-type NoteBlock = {
-  id: string
-  type: BlockType
-  text: string
-  checked?: boolean
+type EditorStats = {
+  words: number
+  blocks: number
+  markdown: string
 }
 
 const EMPTY_DRAFT: DraftPage = {
@@ -67,18 +60,6 @@ const CATEGORY_COLORS = [
   'bg-violet-500/10 text-violet-700 ring-violet-500/20 dark:text-violet-300',
   'bg-amber-500/10 text-amber-700 ring-amber-500/20 dark:text-amber-300',
 ]
-
-const BLOCK_TOOLS: Array<{ type: BlockType; label: string; icon: ComponentType<{ className?: string }> }> = [
-  { type: 'paragraph', label: 'Texto', icon: Type },
-  { type: 'heading', label: 'Título', icon: Heading2 },
-  { type: 'todo', label: 'Checklist', icon: ListChecks },
-  { type: 'callout', label: 'Nota', icon: Highlighter },
-  { type: 'divider', label: 'Separador', icon: Minus },
-]
-
-function makeId() {
-  return Math.random().toString(36).slice(2, 10)
-}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('es-GT', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -101,81 +82,59 @@ function draftFromTemplate(template: (typeof NOTAS_TEMPLATES)[number]): DraftPag
   return { title: template.title, icon: template.icon, tagsText: template.tags.join(', '), content: template.content }
 }
 
-function parseBlocks(content: string): NoteBlock[] {
-  const lines = content.split('\n')
-  const blocks: NoteBlock[] = []
-  let paragraph: string[] = []
-
-  function flushParagraph() {
-    const text = paragraph.join('\n').trim()
-    if (text) blocks.push({ id: makeId(), type: 'paragraph', text })
-    paragraph = []
-  }
-
-  for (const line of lines) {
-    const trimmed = line.trim()
-    if (!trimmed) {
-      flushParagraph()
-      continue
-    }
-    if (trimmed === '---') {
-      flushParagraph()
-      blocks.push({ id: makeId(), type: 'divider', text: '' })
-      continue
-    }
-    if (trimmed.startsWith('## ')) {
-      flushParagraph()
-      blocks.push({ id: makeId(), type: 'heading', text: trimmed.replace(/^##\s+/, '') })
-      continue
-    }
-    if (trimmed.startsWith('- [ ]') || trimmed.startsWith('- [x]') || trimmed.startsWith('- [X]')) {
-      flushParagraph()
-      blocks.push({
-        id: makeId(),
-        type: 'todo',
-        checked: /^- \[[xX]\]/.test(trimmed),
-        text: trimmed.replace(/^- \[[ xX]\]\s*/, ''),
-      })
-      continue
-    }
-    if (trimmed.startsWith('> ')) {
-      flushParagraph()
-      blocks.push({ id: makeId(), type: 'callout', text: trimmed.replace(/^>\s+/, '') })
-      continue
-    }
-    paragraph.push(line)
-  }
-  flushParagraph()
-  return blocks.length ? blocks : [{ id: makeId(), type: 'paragraph', text: '' }]
-}
-
-function serializeBlocks(blocks: NoteBlock[]) {
-  return blocks
-    .map((block) => {
-      if (block.type === 'heading') return `## ${block.text.trim()}`
-      if (block.type === 'todo') return `- [${block.checked ? 'x' : ' '}] ${block.text.trim()}`
-      if (block.type === 'callout') return `> ${block.text.trim()}`
-      if (block.type === 'divider') return '---'
-      return block.text.trim()
-    })
-    .filter((text) => text.length > 0 || text === '---')
-    .join('\n\n')
-}
-
 function tagsFromText(tagsText: string) {
   return tagsText.split(',').map((tag) => tag.trim()).filter(Boolean)
+}
+
+function plainPreview(content: string) {
+  return content
+    .replace(/^#+\s+/gm, '')
+    .replace(/^- \[[ xX]\]\s+/gm, '')
+    .replace(/^>\s+/gm, '')
+    .replace(/\|/g, ' ')
+    .trim()
+}
+
+function markdownToInitialBlocks(markdown: string): PartialBlock[] {
+  const chunks = markdown.split(/\n{2,}/).map((chunk) => chunk.trim()).filter(Boolean)
+  if (chunks.length === 0) return [{ type: 'paragraph', content: '' }]
+
+  return chunks.map((chunk) => {
+    if (chunk === '---') return { type: 'divider' }
+    if (chunk.startsWith('### ')) return { type: 'heading', props: { level: 3 }, content: chunk.replace(/^###\s+/, '') }
+    if (chunk.startsWith('## ')) return { type: 'heading', props: { level: 2 }, content: chunk.replace(/^##\s+/, '') }
+    if (chunk.startsWith('# ')) return { type: 'heading', props: { level: 1 }, content: chunk.replace(/^#\s+/, '') }
+    if (chunk.startsWith('- [ ]') || chunk.startsWith('- [x]') || chunk.startsWith('- [X]')) {
+      const lines = chunk.split('\n').map((line) => line.trim()).filter(Boolean)
+      const first = lines[0] ?? ''
+      return {
+        type: 'checkListItem',
+        props: { checked: /^- \[[xX]\]/.test(first) },
+        content: lines.map((line) => line.replace(/^- \[[ xX]\]\s*/, '')).join('\n'),
+      }
+    }
+    if (chunk.startsWith('- ')) return { type: 'bulletListItem', content: chunk.replace(/^-\s+/gm, '') }
+    if (/^\d+\.\s/.test(chunk)) return { type: 'numberedListItem', content: chunk.replace(/^\d+\.\s+/gm, '') }
+    if (chunk.startsWith('> ')) return { type: 'quote', content: chunk.replace(/^>\s+/gm, '') }
+    if (chunk.startsWith('|')) return { type: 'table', content: { type: 'tableContent', rows: [{ cells: ['Campo', 'Valor'] }, { cells: ['Responsable', ''] }] } }
+    return { type: 'paragraph', content: chunk }
+  })
+}
+
+function createNewPageDraft(from?: DraftPage) {
+  return from ?? { ...EMPTY_DRAFT }
 }
 
 export function Notas() {
   const [pages, setPages] = useState<NotasPage[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState<DraftPage>(EMPTY_DRAFT)
-  const [blocks, setBlocks] = useState<NoteBlock[]>(() => parseBlocks(''))
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('todos')
   const [userId, setUserId] = useState<string | null>(null)
   const [canDelete, setCanDelete] = useState(false)
   const [message, setMessage] = useState('Cargando workspace…')
+  const [editorStats, setEditorStats] = useState<EditorStats>({ words: 0, blocks: 1, markdown: '' })
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
@@ -190,12 +149,11 @@ export function Notas() {
         setPages(loadedPages)
         setUserId(result.data.userId)
         setCanDelete(result.data.canDelete)
-        if (loadedPages[0]) {
-          selectLoadedPage(loadedPages[0])
-        } else {
+        if (loadedPages[0]) selectLoadedPage(loadedPages[0])
+        else {
           setSelectedId(null)
           setDraft(EMPTY_DRAFT)
-          setBlocks(parseBlocks(''))
+          setEditorStats({ words: 0, blocks: 1, markdown: '' })
         }
         setMessage('')
       } else {
@@ -233,48 +191,37 @@ export function Notas() {
   const selectedPage = selectedId ? pages.find((page) => page.id === selectedId) : undefined
   const favoritePages = userId ? pages.filter((page) => page.favoriteBy.includes(userId)).length : 0
   const tags = tagsFromText(draft.tagsText)
-  const wordCount = serializeBlocks(blocks).trim() ? serializeBlocks(blocks).trim().split(/\s+/).length : 0
   const category = tags[0] ?? 'sin-categoria'
+  const editorKey = draft.id ?? `new-${draft.title}-${draft.content.length}`
 
   function selectLoadedPage(page: NotasPage) {
     setSelectedId(page.id)
     setDraft(pageToDraft(page))
-    setBlocks(parseBlocks(page.content))
+    setEditorStats({
+      words: plainPreview(page.content).trim() ? plainPreview(page.content).trim().split(/\s+/).length : 0,
+      blocks: Math.max(1, markdownToInitialBlocks(page.content).length),
+      markdown: page.content,
+    })
     setMessage('')
   }
 
-  function selectPage(page: NotasPage) {
-    selectLoadedPage(page)
-  }
-
-  function syncDraftContent(nextBlocks: NoteBlock[]) {
-    setBlocks(nextBlocks)
-    setDraft((current) => ({ ...current, content: serializeBlocks(nextBlocks) }))
-  }
-
-  function updateBlock(id: string, patch: Partial<NoteBlock>) {
-    syncDraftContent(blocks.map((block) => (block.id === id ? { ...block, ...patch } : block)))
-  }
-
-  function addBlock(type: BlockType, afterId?: string) {
-    const nextBlock: NoteBlock = {
-      id: makeId(),
-      type,
-      text: type === 'heading' ? 'Nuevo título' : type === 'callout' ? 'Nota importante' : type === 'todo' ? 'Pendiente' : '',
-      checked: false,
-    }
-    const index = afterId ? blocks.findIndex((block) => block.id === afterId) : -1
-    const next = index >= 0 ? [...blocks.slice(0, index + 1), nextBlock, ...blocks.slice(index + 1)] : [...blocks, nextBlock]
-    syncDraftContent(next)
-  }
-
-  function removeBlock(id: string) {
-    const next = blocks.filter((block) => block.id !== id)
-    syncDraftContent(next.length ? next : parseBlocks(''))
+  function updateSavedPage(page: NotasPage) {
+    setPages((current) => {
+      const exists = current.some((item) => item.id === page.id)
+      const next = exists ? current.map((item) => (item.id === page.id ? page : item)) : [page, ...current]
+      return next.filter((item) => !item.archived).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    })
+    setSelectedId(page.id)
+    setDraft(pageToDraft(page))
+    setEditorStats({
+      words: plainPreview(page.content).trim() ? plainPreview(page.content).trim().split(/\s+/).length : 0,
+      blocks: Math.max(1, markdownToInitialBlocks(page.content).length),
+      markdown: page.content,
+    })
   }
 
   function handleSave() {
-    const content = serializeBlocks(blocks)
+    const content = editorStats.markdown || draft.content
     const cleanTags = tagsFromText(draft.tagsText)
     startTransition(async () => {
       const result = await saveNotasPage({ id: draft.id, title: draft.title, icon: draft.icon || '📝', content, tags: cleanTags })
@@ -287,17 +234,6 @@ export function Notas() {
         toast.error(result.error)
       }
     })
-  }
-
-  function updateSavedPage(page: NotasPage) {
-    setPages((current) => {
-      const exists = current.some((item) => item.id === page.id)
-      const next = exists ? current.map((item) => (item.id === page.id ? page : item)) : [page, ...current]
-      return next.filter((item) => !item.archived).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    })
-    setSelectedId(page.id)
-    setDraft(pageToDraft(page))
-    setBlocks(parseBlocks(page.content))
   }
 
   function handleFavorite(page: NotasPage) {
@@ -328,11 +264,11 @@ export function Notas() {
         const remaining = pages.filter((item) => item.id !== page.id)
         setPages(remaining)
         const next = remaining[0]
-        setSelectedId(next?.id ?? null)
         if (next) selectLoadedPage(next)
         else {
+          setSelectedId(null)
           setDraft(EMPTY_DRAFT)
-          setBlocks(parseBlocks(''))
+          setEditorStats({ words: 0, blocks: 1, markdown: '' })
         }
         toast.success('Página archivada')
       } else toast.error(result.error)
@@ -340,42 +276,44 @@ export function Notas() {
   }
 
   function newPage(from?: DraftPage) {
-    const next = from ?? EMPTY_DRAFT
+    const next = createNewPageDraft(from)
     setSelectedId(null)
     setDraft(next)
-    setBlocks(parseBlocks(next.content))
+    setEditorStats({
+      words: plainPreview(next.content).trim() ? plainPreview(next.content).trim().split(/\s+/).length : 0,
+      blocks: Math.max(1, markdownToInitialBlocks(next.content).length),
+      markdown: next.content,
+    })
     setMessage('Nueva página lista')
   }
 
   return (
-    <div className="h-[calc(100vh-5.5rem)] min-h-[720px] overflow-hidden rounded-2xl border bg-card shadow-sm">
-      <div className="grid h-full lg:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[300px_minmax(0,1fr)_300px]">
-        <aside className="hidden min-h-0 border-r bg-muted/20 lg:flex lg:flex-col">
+    <div className="h-[calc(100vh-4.75rem)] min-h-[720px] overflow-hidden border-y bg-background xl:-mx-6 2xl:-mx-10">
+      <div className="grid h-full min-h-0 lg:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)_260px]">
+        <aside className="hidden min-h-0 border-r bg-card/40 lg:flex lg:flex-col">
           <div className="space-y-3 border-b p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-2xl bg-brand-accent/10 text-2xl">🗒️</div>
                 <div>
                   <h1 className="text-lg font-semibold tracking-tight">NOTAS</h1>
-                  <p className="text-xs text-muted-foreground">Workspace tipo documento</p>
+                  <p className="text-xs text-muted-foreground">Páginas y categorías</p>
                 </div>
               </div>
-              <Button size="icon-sm" onClick={() => newPage()} aria-label="Nueva página">
-                <Plus />
-              </Button>
+              <Button size="icon-sm" onClick={() => newPage()} aria-label="Nueva página"><Plus /></Button>
             </div>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input className="pl-9" value={query} placeholder="Buscar notas…" onChange={(event) => setQuery(event.target.value)} />
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
+            <div id="notas-favoritas" className="grid grid-cols-3 gap-2 text-center text-[11px]">
               <MiniStat label="Páginas" value={pages.length.toString()} />
               <MiniStat label="Fav" value={favoritePages.toString()} />
               <MiniStat label="Cats" value={allCategories.length.toString()} />
             </div>
           </div>
 
-          <div className="border-b p-3">
+          <div id="notas-categorias" className="border-b p-3">
             <p className="mb-2 text-xs font-medium text-muted-foreground">Categorías</p>
             <div className="flex flex-wrap gap-2">
               <CategoryChip label="Todos" count={pages.length} active={categoryFilter === 'todos'} onClick={() => setCategoryFilter('todos')} />
@@ -385,7 +323,7 @@ export function Notas() {
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-2 overflow-auto p-2">
+          <div id="notas-paginas" className="min-h-0 flex-1 space-y-2 overflow-auto p-2">
             {filteredPages.length === 0 ? (
               <div className="rounded-2xl border border-dashed p-5 text-center text-sm text-muted-foreground">No hay páginas. Creá una o usá una plantilla.</div>
             ) : filteredPages.map((page) => {
@@ -394,7 +332,7 @@ export function Notas() {
                 <button
                   key={page.id}
                   type="button"
-                  onClick={() => selectPage(page)}
+                  onClick={() => selectLoadedPage(page)}
                   className={cn('w-full rounded-2xl border p-3 text-left transition hover:bg-muted/60', selectedId === page.id ? 'border-brand-accent bg-brand-accent/10' : 'bg-background/70')}
                 >
                   <div className="flex items-start gap-3">
@@ -404,7 +342,7 @@ export function Notas() {
                         <p className="truncate font-medium">{page.title}</p>
                         {favorite ? <Star className="size-3 fill-brand-accent text-brand-accent" /> : null}
                       </div>
-                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{page.content || 'Sin contenido todavía'}</p>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{plainPreview(page.content) || 'Sin contenido todavía'}</p>
                       <div className="mt-2 flex flex-wrap gap-1">
                         {page.tags.slice(0, 3).map((tag) => <Badge key={tag} variant="secondary" className="text-[10px]">#{tag}</Badge>)}
                       </div>
@@ -418,7 +356,7 @@ export function Notas() {
         </aside>
 
         <main className="min-w-0 overflow-auto bg-background">
-          <div className="sticky top-0 z-10 border-b bg-background/90 px-4 py-3 backdrop-blur">
+          <div className="sticky top-0 z-20 border-b bg-background/90 px-4 py-3 backdrop-blur md:px-6">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[58px_1fr]">
                 <Input className="h-12 text-center text-2xl" value={draft.icon} maxLength={8} onChange={(event) => setDraft({ ...draft, icon: event.target.value })} />
@@ -433,49 +371,37 @@ export function Notas() {
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Tags className="size-4 text-muted-foreground" />
-              <Input className="h-8 max-w-xl" value={draft.tagsText} placeholder="Categoría primero, luego tags: soporte, proceso, ventas" onChange={(event) => setDraft({ ...draft, tagsText: event.target.value })} />
+              <Input className="h-8 max-w-2xl" value={draft.tagsText} placeholder="Categoría primero, luego tags: soporte, proceso, ventas" onChange={(event) => setDraft({ ...draft, tagsText: event.target.value })} />
               {tags.map((tag, index) => <Badge key={tag} variant={index === 0 ? 'default' : 'secondary'}>#{tag}</Badge>)}
             </div>
           </div>
 
-          <div className="mx-auto max-w-5xl px-4 py-5 md:px-8 lg:px-10">
-            <div className="mb-4 flex flex-wrap gap-2 rounded-2xl border bg-muted/25 p-2">
-              {BLOCK_TOOLS.map((tool) => {
-                const Icon = tool.icon
-                return <Button key={tool.type} variant="outline" size="sm" onClick={() => addBlock(tool.type)}><Icon /> {tool.label}</Button>
-              })}
-            </div>
-
-            <section className="rounded-[1.5rem] border bg-card p-4 shadow-sm md:p-8">
-              <div className="mb-8 border-b pb-6">
-                <div className="mb-4 text-6xl">{draft.icon}</div>
-                <h2 className="text-4xl font-black tracking-tight md:text-5xl">{draft.title || 'Sin título'}</h2>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge className="bg-brand-accent/15 text-foreground ring-1 ring-brand-accent/20">Categoría: {category}</Badge>
-                  <Badge variant="outline">{wordCount} palabras</Badge>
-                </div>
+          <article id="notas-editor" className="mx-auto max-w-7xl px-5 py-8 md:px-10 xl:px-14">
+            <header className="mb-6 border-b pb-6">
+              <div className="mb-4 text-6xl">{draft.icon}</div>
+              <h2 className="text-4xl font-black tracking-tight md:text-6xl">{draft.title || 'Sin título'}</h2>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Badge className="bg-brand-accent/15 text-foreground ring-1 ring-brand-accent/20">Categoría: {category}</Badge>
+                <Badge variant="outline">{editorStats.blocks} bloques</Badge>
+                <Badge variant="outline">{editorStats.words} palabras</Badge>
+                <Badge variant="outline">Slash: /</Badge>
+                <Badge variant="outline">Drag: handle lateral</Badge>
               </div>
+            </header>
 
-              <div className="space-y-2">
-                {blocks.map((block) => (
-                  <NoteBlockEditor
-                    key={block.id}
-                    block={block}
-                    onChange={(patch) => updateBlock(block.id, patch)}
-                    onAdd={(type) => addBlock(type, block.id)}
-                    onRemove={() => removeBlock(block.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          </div>
+            <NotasBlockEditor
+              key={editorKey}
+              initialMarkdown={draft.content}
+              onStatsChange={setEditorStats}
+            />
+          </article>
         </main>
 
-        <aside className="hidden min-h-0 border-l bg-muted/20 p-3 2xl:block">
+        <aside className="hidden min-h-0 overflow-auto border-l bg-card/35 p-3 2xl:block">
           <div className="space-y-3">
             <InfoPanel title="Documento" icon={BookOpen}>
-              <MetaRow icon={FileText} label="Palabras" value={wordCount.toString()} />
-              <MetaRow icon={Hash} label="Bloques" value={blocks.length.toString()} />
+              <MetaRow icon={FileText} label="Palabras" value={editorStats.words.toString()} />
+              <MetaRow icon={Hash} label="Bloques" value={editorStats.blocks.toString()} />
               <MetaRow icon={Tags} label="Tags" value={`${tags.length}/12`} />
               {selectedPage ? <p className="text-xs leading-5 text-muted-foreground">Editada {formatDate(selectedPage.updatedAt)}{selectedPage.lastEditedByName ? ` por ${selectedPage.lastEditedByName}` : ''}</p> : <p className="text-xs text-muted-foreground">Página nueva sin guardar.</p>}
               {message ? <p className="rounded-xl bg-brand-accent/10 p-2 text-xs text-brand-accent">{message}</p> : null}
@@ -490,10 +416,6 @@ export function Notas() {
                 ))}
               </div>
             </InfoPanel>
-
-            <InfoPanel title="Regla del editor" icon={PanelLeftClose}>
-              <p className="text-sm text-muted-foreground">Editás bloques directos. Nada de preview markdown. La categoría es el primer tag para mantener la DB simple.</p>
-            </InfoPanel>
           </div>
         </aside>
       </div>
@@ -501,71 +423,37 @@ export function Notas() {
   )
 }
 
-function NoteBlockEditor({
-  block,
-  onChange,
-  onAdd,
-  onRemove,
-}: {
-  block: NoteBlock
-  onChange: (patch: Partial<NoteBlock>) => void
-  onAdd: (type: BlockType) => void
-  onRemove: () => void
-}) {
-  if (block.type === 'divider') {
-    return (
-      <div className="group flex items-center gap-2 py-3">
-        <BlockControls onAdd={onAdd} onRemove={onRemove} />
-        <div className="h-px flex-1 bg-border" />
-      </div>
-    )
-  }
+function NotasBlockEditor({ initialMarkdown, onStatsChange }: { initialMarkdown: string; onStatsChange: (stats: EditorStats) => void }) {
+  const initialContent = useMemo(() => markdownToInitialBlocks(initialMarkdown), [initialMarkdown])
+  const editor = useCreateBlockNote({
+    initialContent,
+    animations: true,
+    tables: { splitCells: true, cellBackgroundColor: true, cellTextColor: true, headers: true },
+  })
 
-  const inputClass = cn(
-    'w-full resize-none border-0 bg-transparent outline-none placeholder:text-muted-foreground/50 focus-visible:ring-0',
-    block.type === 'heading' && 'text-2xl font-bold tracking-tight md:text-3xl',
-    block.type === 'paragraph' && 'text-base leading-8',
-    block.type === 'callout' && 'text-sm leading-7',
-    block.type === 'todo' && 'text-base leading-7'
-  )
+  useEffect(() => {
+    const markdown = editor.blocksToMarkdownLossy(editor.document)
+    onStatsChange({
+      markdown,
+      blocks: editor.document.length,
+      words: plainPreview(markdown).trim() ? plainPreview(markdown).trim().split(/\s+/).length : 0,
+    })
+  }, [editor, onStatsChange])
 
   return (
-    <div className={cn('group grid gap-2 rounded-xl px-2 py-1 transition hover:bg-muted/35', block.type === 'callout' && 'bg-brand-accent/7 ring-1 ring-brand-accent/15')}>
-      <div className="flex items-start gap-2">
-        <BlockControls onAdd={onAdd} onRemove={onRemove} />
-        {block.type === 'todo' ? (
-          <button
-            type="button"
-            className={cn('mt-1 flex size-5 items-center justify-center rounded border', block.checked ? 'border-brand-accent bg-brand-accent text-brand-accent-foreground' : 'bg-background')}
-            onClick={() => onChange({ checked: !block.checked })}
-            aria-label="Cambiar checklist"
-          >
-            {block.checked ? <CheckSquare className="size-3.5" /> : null}
-          </button>
-        ) : null}
-        {block.type === 'callout' ? <span className="mt-1 text-lg">💡</span> : null}
-        <textarea
-          rows={block.type === 'heading' ? 1 : 2}
-          value={block.text}
-          placeholder={block.type === 'heading' ? 'Título' : block.type === 'todo' ? 'Pendiente' : block.type === 'callout' ? 'Nota importante' : 'Escribí aquí…'}
-          onChange={(event) => onChange({ text: event.target.value })}
-          className={inputClass}
-        />
-      </div>
-    </div>
-  )
-}
-
-function BlockControls({ onAdd, onRemove }: { onAdd: (type: BlockType) => void; onRemove: () => void }) {
-  return (
-    <div className="flex shrink-0 items-center gap-1 pt-1 opacity-0 transition group-hover:opacity-100">
-      <GripVertical className="size-4 text-muted-foreground" />
-      <button type="button" className="rounded-md p-1 text-muted-foreground hover:bg-background hover:text-foreground" onClick={() => onAdd('paragraph')} aria-label="Agregar bloque">
-        <Plus className="size-4" />
-      </button>
-      <button type="button" className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={onRemove} aria-label="Eliminar bloque">
-        <Minus className="size-4" />
-      </button>
+    <div className="notas-blocknote min-h-[calc(100vh-21rem)] rounded-2xl border bg-card/80 px-3 py-5 shadow-sm md:px-8 md:py-8">
+      <BlockNoteViewRaw
+        editor={editor}
+        theme="dark"
+        onChange={(nextEditor) => {
+          const markdown = nextEditor.blocksToMarkdownLossy(nextEditor.document)
+          onStatsChange({
+            markdown,
+            blocks: nextEditor.document.length,
+            words: plainPreview(markdown).trim() ? plainPreview(markdown).trim().split(/\s+/).length : 0,
+          })
+        }}
+      />
     </div>
   )
 }

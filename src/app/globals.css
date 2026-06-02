@@ -199,3 +199,45 @@
     @apply font-sans;
   }
 }
+
+/* NOTAS — BlockNote editor scoped polish */
+.notas-blocknote .bn-container {
+  background: transparent;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+.notas-blocknote .bn-editor {
+  background: transparent;
+  padding-inline: 0;
+  padding-block: 0;
+  max-width: none;
+  min-height: calc(100vh - 24rem);
+}
+
+.notas-blocknote .bn-block-content,
+.notas-blocknote .bn-block-outer {
+  max-width: none;
+}
+
+.notas-blocknote .bn-inline-content,
+.notas-blocknote .bn-block-content[data-content-type='inline'] {
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.notas-blocknote [data-content-type='heading'] .bn-inline-content {
+  line-height: 1.15;
+}
+
+.notas-blocknote .bn-side-menu {
+  color: var(--muted-foreground);
+}
+
+.notas-blocknote .bn-side-menu button:hover,
+.notas-blocknote .bn-suggestion-menu,
+.notas-blocknote .bn-formatting-toolbar {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border-color: var(--border);
+}

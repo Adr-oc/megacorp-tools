@@ -123,6 +123,24 @@ export const apps: AppDefinition[] = [
     href: '/app/tools/notas',
     requiredRoles: ['member', 'admin', 'owner'],
     status: 'available',
+    sidebarModules: [
+      {
+        label: 'Organización',
+        items: [
+          { label: 'Páginas', description: 'Documentos internos por categoría', href: '#notas-paginas' },
+          { label: 'Categorías', description: 'Primer tag de cada nota', href: '#notas-categorias' },
+          { label: 'Favoritas', description: 'Accesos personales rápidos', href: '#notas-favoritas' },
+        ],
+      },
+      {
+        label: 'Editor',
+        items: [
+          { label: 'Slash menu', description: 'Escribí / para insertar bloques', href: '#notas-editor' },
+          { label: 'Drag & drop', description: 'Arrastrá desde el handle lateral', href: '#notas-editor' },
+          { label: 'Bloques', description: 'Texto, headings, listas, tablas y más', href: '#notas-editor' },
+        ],
+      },
+    ],
   },
   {
     id: 'learning',

@@ -4,6 +4,11 @@ export type AppRole = 'member' | 'admin' | 'owner' | 'super-admin'
 
 export type AppStatus = 'available' | 'coming-soon' | 'disabled'
 
+export type AppSidebarModule = {
+  label: string
+  items: Array<{ label: string; description?: string; href?: string }>
+}
+
 export type AppDefinition = {
   id: string
   name: string
@@ -12,4 +17,5 @@ export type AppDefinition = {
   href: string
   requiredRoles: AppRole[]
   status: AppStatus
+  sidebarModules?: AppSidebarModule[]
 }
