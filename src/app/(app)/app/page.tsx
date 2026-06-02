@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { and, eq } from 'drizzle-orm'
-import { Bell, Megaphone } from 'lucide-react'
+import { Bell, Grid2X2, Megaphone, ShieldCheck, Sparkles, Zap } from 'lucide-react'
 import { auth } from '@/lib/auth/server'
 import { ensureActiveOrganization } from '@/lib/auth/active-organization'
 import { db } from '@/lib/db'
@@ -46,14 +46,53 @@ export default async function AppHomePage() {
   )
   const announcements = activeOrgId ? await getDashboardAnnouncements(activeOrgId, session.user.id) : []
   const unreadCount = announcements.filter((announcement) => !announcement.read).length
+  const collaborationApps = visibleApps.filter((app) => ['announcements', 'ideas-board', 'notas', 'learning'].includes(app.id)).length
+  const utilityApps = visibleApps.length - collaborationApps
 
   return (
-    <section className="space-y-8">
-      <div>
-        <h1 className="mb-2 text-3xl font-bold">Aplicaciones</h1>
-        <p className="text-muted-foreground">
-          Hola {session.user.name ?? session.user.email}. Selecciona una app para empezar.
-        </p>
+    <section className="space-y-8 pb-8">
+      <div className="relative overflow-hidden rounded-3xl border bg-[radial-gradient(circle_at_top_left,hsl(var(--brand-accent)/0.18),transparent_36%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)/0.55))] p-5 shadow-sm md:p-7">
+        <div className="absolute right-6 top-6 hidden rounded-full border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur md:block">
+          Portal interno · MEGACORP Tools
+        </div>
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
+          <div className="space-y-5">
+            <div className="inline-flex items-center gap-2 rounded-full border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+              <Sparkles className="size-3.5 text-brand-accent" />
+              Suite operativa
+            </div>
+            <div className="space-y-2">
+              <h1 className="max-w-3xl text-3xl font-semibold tracking-tight md:text-5xl">
+                Aplicaciones internas para trabajar con menos fricción.
+              </h1>
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+                Hola {session.user.name ?? session.user.email}. Entrá a herramientas, comunicación, conocimiento y aprendizaje desde una sola base. Menos pestañas huérfanas. Algo de civilización.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <HomeMetric icon={Grid2X2} label="Apps disponibles" value={visibleApps.length.toString()} />
+              <HomeMetric icon={Zap} label="Colaboración" value={collaborationApps.toString()} />
+              <HomeMetric icon={ShieldCheck} label="Rol actual" value={isSuperAdmin ? 'Super Admin' : role} />
+            </div>
+          </div>
+          <Card className="border-brand-accent/20 bg-background/75 backdrop-blur">
+            <CardContent className="space-y-3 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Acceso rápido</p>
+                  <p className="text-xs text-muted-foreground">Las apps críticas quedan arriba.</p>
+                </div>
+                <Badge variant="secondary">{utilityApps} utilidades</Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <QuickLink href="/app/tools/ideas-board" label="Foro" />
+                <QuickLink href="/app/tools/learning" label="Learning" />
+                <QuickLink href="/app/tools/notas" label="NOTAS" />
+                <QuickLink href="/app/tools/announcements" label="Anuncios" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-background to-muted/60">
@@ -65,7 +104,7 @@ export default async function AppHomePage() {
               </div>
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl font-bold">Anuncios</h2>
+                  <h2 className="text-xl font-bold">Tablero de anuncios</h2>
                   {unreadCount > 0 ? (
                     <Badge className="gap-1">
                       <Bell className="size-3" /> {unreadCount} nuevo{unreadCount === 1 ? '' : 's'}
@@ -75,7 +114,7 @@ export default async function AppHomePage() {
                   )}
                 </div>
                 <p className="max-w-2xl text-sm text-muted-foreground">
-                  Tablero rápido de avisos internos. Lo importante aparece aquí antes de perderse en el cementerio de apps.
+                  Avisos internos visibles antes de que se pierdan en el cementerio de apps.
                 </p>
               </div>
             </div>
@@ -112,12 +151,39 @@ export default async function AppHomePage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {visibleApps.map((app) => (
-          <AppCard key={app.id} app={app} />
-        ))}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight">Centro de aplicaciones</h2>
+            <p className="text-sm text-muted-foreground">Herramientas agrupadas como productos internos, no como botones abandonados.</p>
+          </div>
+          <Badge variant="secondary">{visibleApps.length} disponibles</Badge>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {visibleApps.map((app) => (
+            <AppCard key={app.id} app={app} />
+          ))}
+        </div>
       </div>
     </section>
+  )
+}
+
+function HomeMetric({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border bg-background/75 p-3 backdrop-blur">
+      <Icon className="mb-2 size-4 text-brand-accent" />
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-lg font-semibold capitalize tabular-nums">{value}</p>
+    </div>
+  )
+}
+
+function QuickLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href} className="rounded-xl border bg-muted/30 px-3 py-2 font-medium transition hover:bg-muted">
+      {label}
+    </Link>
   )
 }
 
