@@ -7,6 +7,9 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().email().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  // OIDC / LearnHouse integration (fase 1+)
+  LEARNHOUSE_URL: z.string().url().optional(),
+  LEARNHOUSE_CLIENT_SECRET: z.string().min(16).optional(),
 })
 
 const parsed = envSchema.safeParse(process.env)

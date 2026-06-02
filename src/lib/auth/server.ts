@@ -9,6 +9,7 @@ import { invitation, member } from '@/lib/db/schema/auth'
 import { env } from '@/lib/env'
 import { logAudit } from '@/lib/audit/log'
 import { sendEmail, verificationEmail, invitationEmail, magicLinkEmail } from '@/lib/email/send'
+import { buildOidcProvider } from '@/lib/auth/oidc'
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -103,8 +104,15 @@ export const auth = betterAuth({
         await sendEmail({ to: email, ...tpl })
       },
     }),
+    // OIDC: MegaTools como IdP para clientes externos (LearnHouse en fase 1).
+    // El plugin crea automáticamente las tablas `oauth_application`,
+    // `oauth_access_token`, `oauth_consent`, etc. en la DB configurada.
+    buildOidcProvider(),
   ],
-  trustedOrigins: [env.BETTER_AUTH_URL],
+  trustedOrigins: [
+    env.BETTER_AUTH_URL,
+    ...(env.LEARNHOUSE_URL ? [env.LEARNHOUSE_URL.replace(/\/$/, '')] : []),
+  ],
   databaseHooks: {
     session: {
       create: {
