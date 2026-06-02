@@ -27,13 +27,6 @@ import {
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -221,8 +214,8 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
   }
 
   return (
-    <div className="mx-auto max-w-[1480px] rounded-[2rem] border bg-background/95 p-2 shadow-2xl shadow-brand-accent/10 ring-1 ring-brand-accent/10">
-      <div className="grid min-h-[780px] overflow-hidden rounded-[1.5rem] bg-card md:grid-cols-[210px_minmax(0,1fr)]">
+    <div className="h-full min-h-[calc(100svh-76px)] w-full rounded-[1.35rem] border bg-background/95 p-1.5 shadow-2xl shadow-brand-accent/10 ring-1 ring-brand-accent/10">
+      <div className="grid h-full min-h-[calc(100svh-88px)] overflow-hidden rounded-[1rem] bg-card md:grid-cols-[230px_minmax(0,1fr)]">
         <LearningSidebar
           isAdmin={isAdmin}
           isAdminMode={isAdminMode}
@@ -235,7 +228,7 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
         />
 
         <main className="min-w-0 bg-muted/25">
-          <div className="flex flex-col gap-5 p-4 md:p-6">
+          <div className="flex flex-col gap-3 p-3 md:p-4">
             <LearningTopbar
               query={query}
               onQueryChange={setQuery}
@@ -273,7 +266,7 @@ export function Learning({ initialData }: { initialData: LearningHubData }) {
               />
             )}
 
-            <section className="rounded-[1.35rem] bg-background p-4 shadow-sm ring-1 ring-border/70 md:p-5">
+            <section className="rounded-[1rem] bg-background p-4 shadow-sm ring-1 ring-border/70">
               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <h2 className="text-lg font-bold tracking-tight">
@@ -352,8 +345,8 @@ function LearningSidebar({
   onModeChange: (mode: LearningMode) => void
 }) {
   return (
-    <aside className="hidden border-r bg-background px-3 py-5 md:flex md:flex-col">
-      <div className="mb-8 px-2">
+    <aside className="hidden border-r bg-background px-3 py-4 md:flex md:flex-col">
+      <div className="mb-6 px-2">
         <div className="text-2xl font-black tracking-tight">
           Mega<span className="text-brand-accent">Learn</span>
         </div>
@@ -401,7 +394,7 @@ function LearningTopbar({
   onCreate: () => void
 }) {
   return (
-    <header className="flex flex-col gap-4 rounded-[1.35rem] bg-background px-4 py-4 shadow-sm ring-1 ring-border/70 lg:flex-row lg:items-center lg:justify-between">
+    <header className="flex flex-col gap-4 rounded-[1rem] bg-background px-4 py-3 shadow-sm ring-1 ring-border/70 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <h1 className="text-xl font-bold tracking-tight">{isAdminMode ? 'Teacher studio' : 'My courses'}</h1>
         <p className="text-xs text-muted-foreground">
@@ -458,7 +451,7 @@ function StudentHero({
   const featured = activeContents.length > 0 ? activeContents.slice(0, 2) : recommendation ? [recommendation] : []
 
   return (
-    <section className="rounded-[1.35rem] bg-background p-4 shadow-sm ring-1 ring-border/70 md:p-5">
+    <section className="rounded-[1rem] bg-background p-4 shadow-sm ring-1 ring-border/70">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 className="font-bold tracking-tight">Continue watching</h2>
@@ -513,7 +506,7 @@ function AdminDashboard({
   onCancel: () => void
 }) {
   return (
-    <section className="space-y-4 rounded-[1.35rem] bg-background p-4 shadow-sm ring-1 ring-border/70 md:p-5">
+    <section className="space-y-4 rounded-[1rem] bg-background p-4 shadow-sm ring-1 ring-border/70">
       <div className="grid gap-3 md:grid-cols-3">
         <AdminMetric label="Total content" value={contents.length} hint="Biblioteca completa" />
         <AdminMetric label="Published" value={publishedCount} hint="Visible para alumnos" />
@@ -682,59 +675,125 @@ function AdminContentForm({
   onSave: () => void
   onCancel: () => void
 }) {
+  function appendBlock(block: string) {
+    const nextDescription = draft.description.trim()
+      ? `${draft.description.trim()}\n\n${block}`
+      : block
+    onDraftChange({ ...draft, description: nextDescription })
+  }
+
   return (
-    <Card className="border-brand-accent/30 bg-background">
-      <CardHeader>
-        <CardTitle>{editingId ? 'Editar contenido' : 'Crear contenido'}</CardTitle>
-        <CardDescription>Los borradores quedan visibles solo para administradores.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Field label="Título">
-            <Input value={draft.title} onChange={(event) => onDraftChange({ ...draft, title: event.target.value })} />
-          </Field>
-          <Field label="Categoría / ruta">
-            <Input value={draft.category} onChange={(event) => onDraftChange({ ...draft, category: event.target.value })} placeholder="Onboarding, Ventas, Producto…" />
-          </Field>
-          <Field label="Tipo">
-            <NativeSelect value={draft.type} onChange={(value) => onDraftChange({ ...draft, type: value as LearningType })}>
-              {LEARNING_TYPES.map((type) => <option key={type} value={type}>{LEARNING_TYPE_LABELS[type]}</option>)}
-            </NativeSelect>
-          </Field>
-          <Field label="Nivel">
-            <NativeSelect value={draft.level} onChange={(value) => onDraftChange({ ...draft, level: value as LearningLevel })}>
-              {LEARNING_LEVELS.map((level) => <option key={level} value={level}>{LEARNING_LEVEL_LABELS[level]}</option>)}
-            </NativeSelect>
-          </Field>
-          <Field label="URL opcional">
-            <Input value={draft.url ?? ''} onChange={(event) => onDraftChange({ ...draft, url: event.target.value })} placeholder="https://…" />
-          </Field>
-          <Field label="Duración">
-            <Input value={draft.duration ?? ''} onChange={(event) => onDraftChange({ ...draft, duration: event.target.value })} placeholder="45 min, 2 h, 3 módulos…" />
-          </Field>
-          <Field label="Descripción" className="lg:col-span-2">
-            <textarea
-              className="min-h-28 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              value={draft.description}
-              onChange={(event) => onDraftChange({ ...draft, description: event.target.value })}
-            />
-          </Field>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={draft.published}
-              onChange={(event) => onDraftChange({ ...draft, published: event.target.checked })}
-              className="accent-[var(--brand-accent)]"
-            />
-            Publicado
-          </label>
+    <div className="rounded-[1rem] border border-brand-accent/25 bg-background shadow-sm">
+      <div className="flex flex-col gap-3 border-b px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-brand-accent">{editingId ? 'Editando lección' : 'Nueva lección'}</p>
+          <h3 className="text-lg font-bold tracking-tight">Editor tipo documento</h3>
         </div>
-        <div className="mt-4 flex gap-2">
-          <Button onClick={onSave} disabled={disabled}>{disabled ? 'Guardando…' : 'Guardar'}</Button>
-          <Button variant="outline" onClick={onCancel} disabled={disabled}>Cancelar</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => appendBlock('Objetivo de aprendizaje: ')}>
+            + Objetivo
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => appendBlock('Paso 1: ')}>
+            + Paso
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => appendBlock('Nota importante: ')}>
+            + Nota
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div className="grid min-h-[520px] lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="px-5 py-5 md:px-8">
+          <input
+            value={draft.title}
+            onChange={(event) => onDraftChange({ ...draft, title: event.target.value })}
+            placeholder="Título de la lección"
+            className="w-full border-0 bg-transparent text-4xl font-black tracking-tight outline-none placeholder:text-muted-foreground/45 md:text-5xl"
+          />
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Badge className="bg-brand-accent/15 text-foreground ring-1 ring-brand-accent/20" variant="secondary">
+              {draft.category || 'Sin ruta'}
+            </Badge>
+            <Badge variant="outline">{LEARNING_TYPE_LABELS[draft.type]}</Badge>
+            <Badge variant="outline">{LEARNING_LEVEL_LABELS[draft.level]}</Badge>
+            {draft.duration ? <Badge variant="outline">{draft.duration}</Badge> : null}
+          </div>
+
+          <NotionLikeBodyEditor
+            value={draft.description}
+            onChange={(description) => onDraftChange({ ...draft, description })}
+          />
+        </div>
+
+        <aside className="border-t bg-muted/25 p-4 lg:border-l lg:border-t-0">
+          <div className="sticky top-4 space-y-4">
+            <div>
+              <h4 className="font-semibold">Propiedades</h4>
+              <p className="text-xs text-muted-foreground">Metadata de catálogo. El contenido se edita directo a la izquierda.</p>
+            </div>
+
+            <Field label="Ruta / categoría">
+              <Input value={draft.category} onChange={(event) => onDraftChange({ ...draft, category: event.target.value })} placeholder="Onboarding, Ventas, Producto…" />
+            </Field>
+            <Field label="Tipo">
+              <NativeSelect value={draft.type} onChange={(value) => onDraftChange({ ...draft, type: value as LearningType })}>
+                {LEARNING_TYPES.map((type) => <option key={type} value={type}>{LEARNING_TYPE_LABELS[type]}</option>)}
+              </NativeSelect>
+            </Field>
+            <Field label="Nivel">
+              <NativeSelect value={draft.level} onChange={(value) => onDraftChange({ ...draft, level: value as LearningLevel })}>
+                {LEARNING_LEVELS.map((level) => <option key={level} value={level}>{LEARNING_LEVEL_LABELS[level]}</option>)}
+              </NativeSelect>
+            </Field>
+            <Field label="Duración">
+              <Input value={draft.duration ?? ''} onChange={(event) => onDraftChange({ ...draft, duration: event.target.value })} placeholder="45 min, 2 h, 3 módulos…" />
+            </Field>
+            <Field label="Recurso externo opcional">
+              <Input value={draft.url ?? ''} onChange={(event) => onDraftChange({ ...draft, url: event.target.value })} placeholder="https://…" />
+            </Field>
+
+            <label className="flex items-center justify-between rounded-xl border bg-background px-3 py-2 text-sm">
+              <span>Publicado</span>
+              <input
+                type="checkbox"
+                checked={draft.published}
+                onChange={(event) => onDraftChange({ ...draft, published: event.target.checked })}
+                className="accent-[var(--brand-accent)]"
+              />
+            </label>
+
+            <div className="flex gap-2 pt-2">
+              <Button onClick={onSave} disabled={disabled} className="flex-1 rounded-full">
+                {disabled ? 'Guardando…' : 'Guardar'}
+              </Button>
+              <Button variant="outline" onClick={onCancel} disabled={disabled} className="rounded-full">Cancelar</Button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+function NotionLikeBodyEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="mt-8 flex gap-3">
+      <div className="hidden pt-2 text-muted-foreground md:block">⋮⋮</div>
+      <div
+        key="lesson-body-editor"
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-label="Cuerpo de la lección"
+        data-placeholder="Escribí la lección aquí. Enter para nuevos bloques. Sin markdown, sin preview, edición directa."
+        className="min-h-[340px] flex-1 whitespace-pre-wrap rounded-xl border border-transparent px-2 py-1 text-base leading-8 outline-none transition empty:before:pointer-events-none empty:before:text-muted-foreground/55 empty:before:content-[attr(data-placeholder)] focus:border-brand-accent/25 focus:bg-brand-accent/5"
+        onInput={(event) => onChange(event.currentTarget.innerText)}
+        onBlur={(event) => onChange(event.currentTarget.innerText)}
+      >
+        {value}
+      </div>
+    </div>
   )
 }
 
